@@ -1,2 +1,3 @@
-# go-aws-ecs-cp-td
-Go, AWS ECS Copy TaskDefinition
+# go-awsecs
+
+Library and tool for AWS ECS operations.
