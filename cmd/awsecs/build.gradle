@@ -1,0 +1,14 @@
+plugins {
+  id "com.github.blindpirate.gogradle" version "0.10"
+}
+
+golang {
+  goVersion = "1.10.3"
+  packagePath = "github.com/andresvia/go-awsecs/cmd/awsecs"
+}
+
+build {
+  targetPlatform = ["linux-amd64", "darwin-amd64"]
+}
+
+build.dependsOn check

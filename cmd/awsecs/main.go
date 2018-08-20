@@ -5,7 +5,7 @@ import (
   "fmt"
   "strings"
   "log"
-  "github.com/andresvia/awsecs"
+  "github.com/andresvia/go-awsecs"
   "github.com/aws/aws-sdk-go/aws/session"
   "github.com/aws/aws-sdk-go/service/ecs"
   "github.com/cenkalti/backoff"
