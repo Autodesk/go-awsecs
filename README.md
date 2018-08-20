@@ -6,6 +6,8 @@ Library and tools for AWS ECS operations.
 
 ## update-aws-ecs-service
 
+This tool is inspired by [AWS CodePipeline image definitions file method for updating existing ECS services](https://docs.aws.amazon.com/codepipeline/latest/userguide/pipelines-create.html#pipelines-create-image-definitions), this tool attempts to do something similar, in a standalone fashion without depending on AWS CodePipeline.
+
 Get:
 
 ```
@@ -29,8 +31,21 @@ Usage of update-aws-ecs-service:
     	service
 ```
 
-Example:
+Example, first, build and push a new Docker image for your service somewhere else.
 
 ```
-AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service -cluster mycluster -service myservice -name-image mycontainer=newrepo/newimg:newtag -name-env mycontainer=envvarname=envvarvalue -desired-count 1
+docker build -t myrepo/myimg:newtag .
+docker push myrepo/myimg:newtag
+```
+
+Then, alter the existing container image only, like AWS CodePipeline does.
+
+```
+AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service -cluster mycluster -service myservice -name-image mycontainer=myrepo/myimg:newtag
+```
+
+Alternatively, you can also alter, environment variables and service desired count.
+
+```
+AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service -cluster mycluster -service myservice -name-image mycontainer=myrepo/myimg:newtag -name-env mycontainer=envvarname=envvarvalue -desired-count 1
 ```
