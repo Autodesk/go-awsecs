@@ -1,3 +1,3 @@
 # go-awsecs
 
-Library and tool for AWS ECS operations.
+Library and tools for AWS ECS operations.
