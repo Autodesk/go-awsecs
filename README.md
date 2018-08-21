@@ -20,15 +20,15 @@ Use:
 update-aws-ecs-service -h
 Usage of update-aws-ecs-service:
   -cluster string
-    	cluster
+    	cluster name
+  -container-envvar value
+    	container-name=envvar-name=envvar-value
+  -container-image value
+    	container-name=image
   -desired-count int
-    	desired-count (default -1)
-  -name-env value
-    	name-env
-  -name-image value
-    	name-image
+    	desired-count (negative: no change) (default -1)
   -service string
-    	service
+    	service name
 ```
 
 Example, first, build and push a new Docker image for your service somewhere else.
@@ -41,11 +41,11 @@ docker push myrepo/myimg:newtag
 Then, alter the existing container image only, like AWS CodePipeline does.
 
 ```
-AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service -cluster mycluster -service myservice -name-image mycontainer=myrepo/myimg:newtag
+AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service -cluster mycluster -service myservice -container-image mycontainer=myrepo/myimg:newtag
 ```
 
 Alternatively, you can also alter, environment variables and service desired count.
 
 ```
-AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service -cluster mycluster -service myservice -name-image mycontainer=myrepo/myimg:newtag -name-env mycontainer=envvarname=envvarvalue -desired-count 1
+AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service -cluster mycluster -service myservice -container-image mycontainer=myrepo/myimg:newtag -container-envvar mycontainer=envvarname=envvarvalue -desired-count 1
 ```
