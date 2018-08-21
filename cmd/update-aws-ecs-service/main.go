@@ -61,15 +61,15 @@ func (kvs *mapMapFlag) Set(value string) error {
 }
 
 func main() {
-	cluster := flag.String("cluster", "", "cluster")
-	service := flag.String("service", "", "service")
-	desiredCount := flag.Int64("desired-count", -1, "desired-count")
+	cluster := flag.String("cluster", "", "cluster name")
+	service := flag.String("service", "", "service name")
+	desiredCount := flag.Int64("desired-count", -1, "desired-count (negative: no change)")
 
 	var images mapFlag
 	var envs mapMapFlag
 
-	flag.Var(&images, "image", "container-image")
-	flag.Var(&envs, "env", "container-envvar")
+	flag.Var(&images, "container-image", "container-name=image")
+	flag.Var(&envs, "container-envvar", "container-name=envvar-name=envvar-value")
 	flag.Parse()
 
 	esu := awsecs.ECSServiceUpdate{
