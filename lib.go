@@ -66,18 +66,22 @@ func alterEnvironments(copy ecs.RegisterTaskDefinitionInput, envMaps map[string]
 func alterEnvironment(copy ecs.ContainerDefinition, envMap map[string]string) ecs.ContainerDefinition {
 	for name, value := range envMap {
 		i := 0
+		found := false
 		for i < len(copy.Environment) {
 			environment := copy.Environment[i]
 			if *environment.Name == name && value == EnvKnockOffValue {
 				copy.Environment = append(copy.Environment[:i], copy.Environment[i+1:]...)
+				found = true
 				i--
 			} else if *environment.Name == name {
 				environment.Value = aws.String(value)
-				return copy
+				found = true
 			}
 			i++
 		}
-		copy.Environment = append(copy.Environment, &ecs.KeyValuePair{Name: aws.String(name), Value: aws.String(value)})
+		if !found {
+			copy.Environment = append(copy.Environment, &ecs.KeyValuePair{Name: aws.String(name), Value: aws.String(value)})
+		}
 	}
 	return copy
 }
