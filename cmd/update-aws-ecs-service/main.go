@@ -1,14 +1,14 @@
 package main
 
 import (
-  "flag"
-  "fmt"
-  "strings"
-  "log"
-  "github.com/andresvia/go-awsecs"
-  "github.com/aws/aws-sdk-go/aws/session"
-  "github.com/aws/aws-sdk-go/service/ecs"
-  "github.com/cenkalti/backoff"
+	"flag"
+	"fmt"
+	"github.com/andresvia/go-awsecs"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ecs"
+	"github.com/cenkalti/backoff"
+	"log"
+	"strings"
 )
 
 func int64ptr(x int64) *int64 {
