@@ -41,11 +41,19 @@ docker push myrepo/myimg:newtag
 Then, alter the existing container image only, like AWS CodePipeline does.
 
 ```
-AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service -cluster mycluster -service myservice -container-image mycontainer=myrepo/myimg:newtag
+AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service \
+  -cluster mycluster \
+  -service myservice \
+  -container-image mycontainer=myrepo/myimg:newtag
 ```
 
 Alternatively, you can also alter, environment variables and service desired count.
 
 ```
-AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service -cluster mycluster -service myservice -container-image mycontainer=myrepo/myimg:newtag -container-envvar mycontainer=envvarname=envvarvalue -desired-count 1
+AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service \
+  -cluster mycluster \
+  -service myservice \
+  -container-image mycontainer=myrepo/myimg:newtag \
+  -container-envvar mycontainer=envvarname=envvarvalue \
+  -desired-count 1
 ```
