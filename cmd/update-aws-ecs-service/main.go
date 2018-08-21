@@ -68,8 +68,8 @@ func main() {
 	var images mapFlag
 	var envs mapMapFlag
 
-	flag.Var(&images, "name-image", "name-image")
-	flag.Var(&envs, "name-env", "name-env")
+	flag.Var(&images, "image", "container-image")
+	flag.Var(&envs, "env", "container-envvar")
 	flag.Parse()
 
 	esu := awsecs.ECSServiceUpdate{
