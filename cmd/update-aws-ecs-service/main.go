@@ -35,28 +35,19 @@ func (kvs *mapMapFlag) String() string {
 	return fmt.Sprintf("%v", *kvs)
 }
 
-func (kvs *mapFlag) Set(value string) error {
+func (kvs mapFlag) Set(value string) error {
 	key, value := keyEqValue(value)
-	kvs2 := *kvs
-	if kvs2 == nil {
-		kvs2 = map[string]string{}
-	}
-	kvs2[key] = value
+	kvs[key] = value
 	return nil
 }
 
-func (kvs *mapMapFlag) Set(value string) error {
+func (kvs mapMapFlag) Set(value string) error {
 	key, value := keyEqValue(value)
 	valueKey, value := keyEqValue(value)
-	kvs2 := *kvs
-	if kvs2 == nil {
-		kvs2 = map[string]map[string]string{}
+	if kvs[key] == nil {
+		kvs[key] = map[string]string{}
 	}
-	kvs3 := kvs2[key]
-	if kvs3 == nil {
-		kvs3 = map[string]string{}
-	}
-	kvs3[valueKey] = value
+	kvs[key][valueKey] = value
 	return nil
 }
 
@@ -65,8 +56,8 @@ func main() {
 	service := flag.String("service", "", "service name")
 	desiredCount := flag.Int64("desired-count", -1, "desired-count (negative: no change)")
 
-	var images mapFlag
-	var envs mapMapFlag
+	var images mapFlag = map[string]string{}
+	var envs mapMapFlag = map[string]map[string]string{}
 
 	flag.Var(&images, "container-image", "container-name=image")
 	flag.Var(&envs, "container-envvar", "container-name=envvar-name=envvar-value")
