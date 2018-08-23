@@ -78,3 +78,10 @@ Usage of enforce-aws-ecs-asg-launchconfig:
   -cluster string
     	cluster name
 ```
+
+Example:
+
+```
+AWS_REGION=myregion AWS_PROFILE=myprofile enforce-aws-ecs-asg-launchconfig -asg myasgname -cluster myclustername
+# default timeout for the operation is 15 minutes
+```
