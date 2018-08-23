@@ -60,7 +60,7 @@ AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service \
 
 ## enforce-aws-ecs-asg-launchconfig
 
-This tool is useful to ensure that all EC2 instances in a ECS cluster backed up by a ASG, share the launch configuration defined in the ASG. This tool doesn't work with launch templates. ECS EC2 Container Instances will be drained.
+This tool is useful to ensure that all EC2 instances in a ECS cluster backed up by a ASG, share the launch configuration defined in the ASG. This tool doesn't work with launch templates. ECS EC2 Container Instances will be drained. EC2 Instances will be terminated (after they are drained).
 
 Get:
 
