@@ -4,27 +4,6 @@ Library and tools for AWS ECS operations.
 
 # tools
 
-## enforce-aws-ecs-asg-launchconfig
-
-This tool is useful to ensure that all EC2 instances in a ECS cluster backed up by a ASG, share the launch configuration defined in the ASG. This tool doesn't work with launch templates. ECS EC2 Container Instances will be drained.
-
-Get:
-
-```
-go get -u github.com/andresvia/go-awsecs/cmd/enforce-aws-ecs-asg-launchconfig
-```
-
-Use:
-
-```
-enforce-aws-ecs-asg-launchconfig -h
-Usage of enforce-aws-ecs-asg-launchconfig:
-  -asg string
-    	asg name
-  -cluster string
-    	cluster name
-```
-
 ## update-aws-ecs-service
 
 This tool is inspired by [AWS CodePipeline image definitions file method for updating existing ECS services](https://docs.aws.amazon.com/codepipeline/latest/userguide/pipelines-create.html#pipelines-create-image-definitions), this tool attempts to do something similar, in a standalone fashion without depending on AWS CodePipeline.
@@ -77,4 +56,25 @@ AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service \
   -container-image mycontainer=myrepo/myimg:newtag \
   -container-envvar mycontainer=envvarname=envvarvalue \
   -desired-count 1
+```
+
+## enforce-aws-ecs-asg-launchconfig
+
+This tool is useful to ensure that all EC2 instances in a ECS cluster backed up by a ASG, share the launch configuration defined in the ASG. This tool doesn't work with launch templates. ECS EC2 Container Instances will be drained.
+
+Get:
+
+```
+go get -u github.com/andresvia/go-awsecs/cmd/enforce-aws-ecs-asg-launchconfig
+```
+
+Use:
+
+```
+enforce-aws-ecs-asg-launchconfig -h
+Usage of enforce-aws-ecs-asg-launchconfig:
+  -asg string
+    	asg name
+  -cluster string
+    	cluster name
 ```
