@@ -31,7 +31,9 @@ Usage of update-aws-ecs-service:
     	service name
 ```
 
-Example, first, build and push a new Docker image for your service somewhere else.
+Example.
+
+First, build and push a new Docker image for your service somewhere else.
 
 ```
 docker build -t myrepo/myimg:newtag .
