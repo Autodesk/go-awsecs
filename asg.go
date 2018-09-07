@@ -53,18 +53,18 @@ func filterInstancesToReplace(expectedLaunchConfig *string, instances []*autosca
 }
 
 type ecsEC2Instance struct {
-	ec2InstanceId          string
-	ecsContainerInstanceId string
+	ec2InstanceID          string
+	ecsContainerInstanceID string
 }
 
 func containerInstanceArnsToContainerInstanceIds(input []*string) (output []*string) {
 	for _, arn := range input {
-		output = append(output, aws.String(containerInstanceArnToContainerInstanceId(*arn)))
+		output = append(output, aws.String(containerInstanceArnToContainerInstanceID(*arn)))
 	}
 	return
 }
 
-func containerInstanceArnToContainerInstanceId(input string) (output string) {
+func containerInstanceArnToContainerInstanceID(input string) (output string) {
 	parts := strings.Split(input, "/")
 	output = strings.Join(parts[len(parts)-1:], "")
 	return
@@ -94,8 +94,8 @@ func instancesToContainerInstances(ECSAPI ecs.ECS, instances []autoscaling.Insta
 			for _, containerInstance := range output.ContainerInstances {
 				if *containerInstance.Ec2InstanceId == *instance.InstanceId {
 					ecsEC2Instances = append(ecsEC2Instances, ecsEC2Instance{
-						ec2InstanceId:          *instance.InstanceId,
-						ecsContainerInstanceId: containerInstanceArnToContainerInstanceId(*containerInstance.ContainerInstanceArn),
+						ec2InstanceID:          *instance.InstanceId,
+						ecsContainerInstanceID: containerInstanceArnToContainerInstanceID(*containerInstance.ContainerInstanceArn),
 					})
 					goto gotobreak
 				}
@@ -109,7 +109,7 @@ func instancesToContainerInstances(ECSAPI ecs.ECS, instances []autoscaling.Insta
 func detachAndDrain(ASAPI autoscaling.AutoScaling, ECSAPI ecs.ECS, instance ecsEC2Instance, asgName, clusterName string) error {
 	output, err := ASAPI.DetachInstances(&autoscaling.DetachInstancesInput{
 		AutoScalingGroupName:           aws.String(asgName),
-		InstanceIds:                    []*string{aws.String(instance.ec2InstanceId)},
+		InstanceIds:                    []*string{aws.String(instance.ec2InstanceID)},
 		ShouldDecrementDesiredCapacity: aws.Bool(false),
 	})
 
@@ -123,14 +123,14 @@ func detachAndDrain(ASAPI autoscaling.AutoScaling, ECSAPI ecs.ECS, instance ecsE
 
 	_, err = ECSAPI.UpdateContainerInstancesState(&ecs.UpdateContainerInstancesStateInput{
 		Cluster:            aws.String(clusterName),
-		ContainerInstances: []*string{aws.String(instance.ecsContainerInstanceId)},
+		ContainerInstances: []*string{aws.String(instance.ecsContainerInstanceID)},
 		Status:             aws.String("DRAINING"),
 	})
 
 	reAttach := func() {
 		_, err2 := ASAPI.AttachInstances(&autoscaling.AttachInstancesInput{
 			AutoScalingGroupName: aws.String(asgName),
-			InstanceIds:          []*string{aws.String(instance.ec2InstanceId)},
+			InstanceIds:          []*string{aws.String(instance.ec2InstanceID)},
 		})
 		if err2 != nil {
 			log.Printf("%v %v", instance, err2)
@@ -143,7 +143,7 @@ func detachAndDrain(ASAPI autoscaling.AutoScaling, ECSAPI ecs.ECS, instance ecsE
 	}
 
 	operation := func() error {
-		err := drainingContainerInstanceIsDrained(ECSAPI, clusterName, instance.ecsContainerInstanceId)
+		err := drainingContainerInstanceIsDrained(ECSAPI, clusterName, instance.ecsContainerInstanceID)
 		if err != nil {
 			log.Printf("%v %v", instance, err)
 		}
@@ -159,10 +159,10 @@ func detachAndDrain(ASAPI autoscaling.AutoScaling, ECSAPI ecs.ECS, instance ecsE
 	return nil
 }
 
-func drainingContainerInstanceIsDrained(ECSAPI ecs.ECS, clusterName, containerInstanceId string) error {
+func drainingContainerInstanceIsDrained(ECSAPI ecs.ECS, clusterName, containerInstanceID string) error {
 	output, err := ECSAPI.DescribeContainerInstances(&ecs.DescribeContainerInstancesInput{
 		Cluster:            aws.String(clusterName),
-		ContainerInstances: []*string{aws.String(containerInstanceId)},
+		ContainerInstances: []*string{aws.String(containerInstanceID)},
 	})
 	if err != nil {
 		return err
@@ -184,18 +184,18 @@ func drainAll(ASAPI autoscaling.AutoScaling, ECSAPI ecs.ECS, EC2API ec2.EC2, ins
 	var wg sync.WaitGroup
 	for i, instance := range instances {
 		wg.Add(1)
-		go func(thatInstance ecsEC2Instance) {
+		go func(thatInstance ecsEC2Instance, index int) {
 			defer wg.Done()
-			errors[i] = detachAndDrain(ASAPI, ECSAPI, thatInstance, clusterName, asgName)
-			if errors[i] == nil {
+			errors[index] = detachAndDrain(ASAPI, ECSAPI, thatInstance, clusterName, asgName)
+			if errors[index] == nil {
 				_, err := EC2API.TerminateInstances(&ec2.TerminateInstancesInput{
 					InstanceIds: []*string{
-						aws.String(thatInstance.ec2InstanceId),
+						aws.String(thatInstance.ec2InstanceID),
 					},
 				})
-				errors[i] = err
+				errors[index] = err
 			}
-		}(instance)
+		}(instance, i)
 	}
 	wg.Wait()
 	var onlyErrors []error
@@ -222,6 +222,7 @@ func enforceLaunchConfig(ECSAPI ecs.ECS, ASAPI autoscaling.AutoScaling, EC2API e
 	return drainAll(ASAPI, ECSAPI, EC2API, instances, asgName, clusterName)
 }
 
+// EnforceLaunchConfig encapsulates the attributes of a LaunchConfig enforcement
 type EnforceLaunchConfig struct {
 	ECSAPI         ecs.ECS
 	ASAPI          autoscaling.AutoScaling
@@ -231,6 +232,7 @@ type EnforceLaunchConfig struct {
 	BackOff        backoff.BackOff
 }
 
+// Apply the LaunchConfig enforcement
 func (e *EnforceLaunchConfig) Apply() error {
 	return enforceLaunchConfig(e.ECSAPI, e.ASAPI, e.EC2API, e.ASGName, e.ECSClusterName, e.BackOff)
 }

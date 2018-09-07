@@ -11,10 +11,12 @@ import (
 var (
 	// EnvKnockOffValue value used to knock off environment variables
 	EnvKnockOffValue = ""
-	// ErrDeploymentChangedElsewhere
+	// ErrDeploymentChangedElsewhere the deployment was changed elsewhere
 	ErrDeploymentChangedElsewhere = backoff.Permanent(errors.New("the deployment was changed elsewhere"))
 	// ErrOtherThanPrimaryDeploymentFound service update didn't complete
 	ErrOtherThanPrimaryDeploymentFound = errors.New("other than PRIMARY deployment found")
+	// ErrNotRunningDesiredCount service update completed but number of containers not matching desired count
+	ErrNotRunningDesiredCount = errors.New("not running the desired count")
 	// ErrServiceNotFound trying to update a service that doesn't exist
 	ErrServiceNotFound = errors.New("the service does not exist")
 	// ErrServiceDeletedAfterUpdate service was updated and then deleted elsewhere
@@ -140,6 +142,9 @@ func validateDeployment(api ecs.ECS, ecsService ecs.Service) error {
 				}
 				for _, deployment := range svc.Deployments {
 					if *deployment.Id == *ecsDeployment.Id {
+						if *svc.RunningCount < *svc.DesiredCount {
+							return ErrNotRunningDesiredCount
+						}
 						return nil
 					}
 				}
