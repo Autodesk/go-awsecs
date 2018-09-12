@@ -133,7 +133,7 @@ func detachAndDrain(ASAPI autoscaling.AutoScaling, ECSAPI ecs.ECS, instance ecsE
 			InstanceIds:          []*string{aws.String(instance.ec2InstanceID)},
 		})
 		if err2 != nil {
-			log.Printf("[ACTIONABLE ACTION REQUIRED] instance re-attachment failed, instance left in DRAINING status!")
+			log.Printf("[ACTIONABLE ACTION REQUIRED] instance re-attachment failed!")
 			log.Printf("%v %v", instance, err2)
 		}
 	}
@@ -154,6 +154,7 @@ func detachAndDrain(ASAPI autoscaling.AutoScaling, ECSAPI ecs.ECS, instance ecsE
 	err = backoff.Retry(operation, backoff.NewExponentialBackOff())
 	if err != nil {
 		reAttach()
+		log.Printf("[ACTIONABLE ACTION REQUIRED] instance left in DRAINING status!")
 		return fmt.Errorf("%v %v", instance, err)
 	}
 
