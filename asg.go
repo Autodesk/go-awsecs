@@ -133,6 +133,7 @@ func detachAndDrain(ASAPI autoscaling.AutoScaling, ECSAPI ecs.ECS, instance ecsE
 			InstanceIds:          []*string{aws.String(instance.ec2InstanceID)},
 		})
 		if err2 != nil {
+			log.Printf("[ACTIONABLE ACTION REQUIRED] instance re-attachment failed")
 			log.Printf("%v %v", instance, err2)
 		}
 	}

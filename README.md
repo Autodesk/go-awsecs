@@ -2,6 +2,10 @@
 
 Library and tools for AWS ECS operations.
 
+Get golang: https://golang.org/dl/
+
+RTFM: https://github.com/golang/go/wiki/SettingGOPATH
+
 # tools
 
 ## update-aws-ecs-service
@@ -11,13 +15,13 @@ This tool is inspired by [AWS CodePipeline image definitions file method for upd
 Get:
 
 ```
-go get -u github.com/andresvia/go-awsecs/cmd/update-aws-ecs-service
+go get -v -u github.com/andresvia/go-awsecs/cmd/update-aws-ecs-service
 ```
 
 Use:
 
 ```
-update-aws-ecs-service -h
+$GOPATH/bin/update-aws-ecs-service -h
 Usage of update-aws-ecs-service:
   -cluster string
     	cluster name
@@ -43,7 +47,7 @@ docker push myrepo/myimg:newtag
 Then, alter the existing container image only, like AWS CodePipeline does.
 
 ```
-AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service \
+AWS_PROFILE=myprofile AWS_REGION=myregion $GOPATH/bin/update-aws-ecs-service \
   -cluster mycluster \
   -service myservice \
   -container-image mycontainer=myrepo/myimg:newtag
@@ -52,7 +56,7 @@ AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service \
 Alternatively, you can also alter, environment variables and service desired count.
 
 ```
-AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service \
+AWS_PROFILE=myprofile AWS_REGION=myregion $GOPATH/bin/update-aws-ecs-service \
   -cluster mycluster \
   -service myservice \
   -container-image mycontainer=myrepo/myimg:newtag \
@@ -67,13 +71,13 @@ This tool is useful to ensure that all EC2 instances in a ECS cluster backed up 
 Get:
 
 ```
-go get -u github.com/andresvia/go-awsecs/cmd/enforce-aws-ecs-asg-launchconfig
+go get -v -u github.com/andresvia/go-awsecs/cmd/enforce-aws-ecs-asg-launchconfig
 ```
 
 Use:
 
 ```
-enforce-aws-ecs-asg-launchconfig -h
+$GOPATH/bin/enforce-aws-ecs-asg-launchconfig -h
 Usage of enforce-aws-ecs-asg-launchconfig:
   -asg string
     	asg name
@@ -84,7 +88,7 @@ Usage of enforce-aws-ecs-asg-launchconfig:
 Example:
 
 ```
-AWS_REGION=myregion AWS_PROFILE=myprofile enforce-aws-ecs-asg-launchconfig \
+AWS_REGION=myregion AWS_PROFILE=myprofile $GOPATH/bin/enforce-aws-ecs-asg-launchconfig \
   -asg myasgname \
   -cluster myclustername
 # default timeout for the operation is 15 minutes
