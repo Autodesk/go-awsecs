@@ -102,26 +102,26 @@ func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMap
 	return *arn, nil
 }
 
-func alterService(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, desiredCount *int64) (ecs.Service, error) {
+func alterService(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, desiredCount *int64) (ecs.Service, ecs.Service, error) {
 	output, err := api.DescribeServices(&ecs.DescribeServicesInput{Cluster: aws.String(cluster), Services: []*string{aws.String(service)}})
 	if err != nil {
-		return ecs.Service{}, err
+		return ecs.Service{}, ecs.Service{}, err
 	}
 	for _, svc := range output.Services {
 		newTd, err := copyTaskDef(api, *svc.TaskDefinition, imageMap, envMaps)
 		if err != nil {
-			return ecs.Service{}, err
+			return *svc, ecs.Service{}, err
 		}
 		if desiredCount == nil {
 			desiredCount = svc.DesiredCount
 		}
 		updated, err := api.UpdateService(&ecs.UpdateServiceInput{Cluster: aws.String(cluster), Service: aws.String(service), TaskDefinition: aws.String(newTd), DesiredCount: desiredCount})
 		if err != nil {
-			return ecs.Service{}, err
+			return *svc, ecs.Service{}, err
 		}
-		return *updated.Service, nil
+		return *svc, *updated.Service, nil
 	}
-	return ecs.Service{}, ErrServiceNotFound
+	return ecs.Service{}, ecs.Service{}, ErrServiceNotFound
 }
 
 func validateDeployment(api ecs.ECS, ecsService ecs.Service) error {
@@ -155,19 +155,19 @@ func validateDeployment(api ecs.ECS, ecsService ecs.Service) error {
 	return errNoPrimaryDeployment
 }
 
-func alterServiceValidateDeployment(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, desiredCount *int64, bo backoff.BackOff) error {
-	svc, err := alterService(api, cluster, service, imageMap, envMaps, desiredCount)
+func alterServiceValidateDeployment(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, desiredCount *int64, bo backoff.BackOff) (ecs.Service, error) {
+	oldsvc, newsvc, err := alterService(api, cluster, service, imageMap, envMaps, desiredCount)
 	if err != nil {
-		return err
+		return oldsvc, err
 	}
 	operation := func() error {
-		err := validateDeployment(api, svc)
+		err := validateDeployment(api, newsvc)
 		if err != nil {
 			log.Print(err)
 		}
 		return err
 	}
-	return backoff.Retry(operation, bo)
+	return oldsvc, backoff.Retry(operation, bo)
 }
 
 // ECSServiceUpdate encapsulates the attributes of an ECS service update
@@ -183,5 +183,5 @@ type ECSServiceUpdate struct {
 
 // Apply the ECS Service Update
 func (e *ECSServiceUpdate) Apply() error {
-	return alterServiceValidateDeployment(e.API, e.Cluster, e.Service, e.Image, e.Environment, e.DesiredCount, e.BackOff)
+	return alterServiceOrValidatedRollBack(e.API, e.Cluster, e.Service, e.Image, e.Environment, e.DesiredCount, e.BackOff)
 }
