@@ -10,7 +10,7 @@ RTFM: https://github.com/golang/go/wiki/SettingGOPATH
 
 ## update-aws-ecs-service
 
-This tool is inspired by [AWS CodePipeline image definitions file method for updating existing ECS services](https://docs.aws.amazon.com/codepipeline/latest/userguide/pipelines-create.html#pipelines-create-image-definitions), this tool attempts to do something similar, in a standalone fashion without depending on AWS CodePipeline.
+This tool is inspired by [AWS CodePipeline image definitions file method for updating existing ECS services](https://docs.aws.amazon.com/codepipeline/latest/userguide/pipelines-create.html#pipelines-create-image-definitions), this tool attempts to do something similar, in a standalone fashion without depending on AWS CodePipeline, and more importantly without having to create individual AWS CodePipeline pipelines.
 
 Get:
 
