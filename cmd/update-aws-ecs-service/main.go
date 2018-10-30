@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/andresvia/go-awsecs"
+	"git.autodesk.com/t-villa/go-awsecs"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/cenkalti/backoff"

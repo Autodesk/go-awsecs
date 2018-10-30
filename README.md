@@ -15,7 +15,7 @@ This tool is inspired by [AWS CodePipeline image definitions file method for upd
 Get:
 
 ```
-go get -v -u github.com/andresvia/go-awsecs/cmd/update-aws-ecs-service
+go get -v -u git.autodesk.com/t-villa/go-awsecs/cmd/update-aws-ecs-service
 ```
 
 Use:
@@ -71,7 +71,7 @@ This tool is useful to ensure that all EC2 instances in a ECS cluster backed up 
 Get:
 
 ```
-go get -v -u github.com/andresvia/go-awsecs/cmd/enforce-aws-ecs-asg-launchconfig
+go get -v -u git.autodesk.com/t-villa/go-awsecs/cmd/enforce-aws-ecs-asg-launchconfig
 ```
 
 Use:
