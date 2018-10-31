@@ -4,10 +4,7 @@ Library and tools for AWS ECS operations.
 
 Get golang: https://golang.org/dl/
 
-RTFM:
-
- - https://github.com/golang/go/wiki/SettingGOPATH
- - https://unix.stackexchange.com/a/111557/19393
+RTFM: https://github.com/golang/go/wiki/SettingGOPATH
 
 # tools
 
@@ -100,3 +97,6 @@ AWS_REGION=myregion AWS_PROFILE=myprofile enforce-aws-ecs-asg-launchconfig \
   -cluster myclustername
 # default timeout for the operation is 15 minutes
 ```
+
+----
+1 - https://unix.stackexchange.com/a/111557/19393
