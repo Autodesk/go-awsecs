@@ -10,7 +10,7 @@ RTFM: https://github.com/golang/go/wiki/SettingGOPATH
 
 ## update-aws-ecs-service
 
-This tool is inspired by [AWS CodePipeline image definitions file method for updating existing ECS services](https://docs.aws.amazon.com/codepipeline/latest/userguide/pipelines-create.html#pipelines-create-image-definitions), this tool attempts to do something similar, in a standalone fashion without depending on AWS CodePipeline, and more importantly without having to create individual AWS CodePipeline pipelines.
+This tool is inspired by [AWS CodePipeline image definitions file method for updating existing ECS services](https://docs.aws.amazon.com/codepipeline/latest/userguide/pipelines-create.html#pipelines-create-image-definitions). This tool att empts to do something similar in a standalone fashion without depending on AWS CodePipeline, and more importantly without having to create individual AWS CodePipeline pipelines.
 
 Get:
 
@@ -55,7 +55,7 @@ AWS_PROFILE=myprofile AWS_REGION=myregion $GOPATH/bin/update-aws-ecs-service \
   -container-image mycontainer=myrepo/myimg:newtag
 ```
 
-Alternatively, you can also alter, environment variables and service desired count.
+Alternatively, you can also alter environment variables and service desired count.
 
 ```
 AWS_PROFILE=myprofile AWS_REGION=myregion $GOPATH/bin/update-aws-ecs-service \
@@ -68,7 +68,7 @@ AWS_PROFILE=myprofile AWS_REGION=myregion $GOPATH/bin/update-aws-ecs-service \
 
 ## enforce-aws-ecs-asg-launchconfig
 
-This tool is useful to ensure that all EC2 instances in a ECS cluster backed up by a ASG, share the launch configuration defined in the ASG. This tool doesn't work with launch templates. ECS EC2 Container Instances will be drained. EC2 Instances will be terminated (after they are drained).
+This tool is useful to ensure that all EC2 instances in a ECS cluster backed up by a ASG share the launch configuration defined in the ASG. This tool doesn't work with launch templates. ECS EC2 Container Instances will be drained. EC2 Instances will be terminated (after they have been drained).
 
 Get:
 
