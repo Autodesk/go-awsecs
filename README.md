@@ -84,7 +84,7 @@ go get -v -u git.autodesk.com/t-villa/go-awsecs/cmd/enforce-aws-ecs-asg-launchco
 Use:
 
 ```
-$GOPATH/bin/enforce-aws-ecs-asg-launchconfig -h
+enforce-aws-ecs-asg-launchconfig -h
 Usage of enforce-aws-ecs-asg-launchconfig:
   -asg string
     	asg name
@@ -95,7 +95,7 @@ Usage of enforce-aws-ecs-asg-launchconfig:
 Example:
 
 ```
-AWS_REGION=myregion AWS_PROFILE=myprofile $GOPATH/bin/enforce-aws-ecs-asg-launchconfig \
+AWS_REGION=myregion AWS_PROFILE=myprofile enforce-aws-ecs-asg-launchconfig \
   -asg myasgname \
   -cluster myclustername
 # default timeout for the operation is 15 minutes
