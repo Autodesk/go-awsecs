@@ -4,7 +4,10 @@ Library and tools for AWS ECS operations.
 
 Get golang: https://golang.org/dl/
 
-RTFM: https://github.com/golang/go/wiki/SettingGOPATH
+RTFM:
+
+ - https://github.com/golang/go/wiki/SettingGOPATH
+ - https://unix.stackexchange.com/a/111557/19393
 
 # tools
 
@@ -20,10 +23,10 @@ Grab binary distribution from [releases tab](https://git.autodesk.com/t-villa/go
 go get -v -u git.autodesk.com/t-villa/go-awsecs/cmd/update-aws-ecs-service
 ```
 
-Use:
+Use<sup>1</sup>:
 
 ```
-$GOPATH/bin/update-aws-ecs-service -h
+update-aws-ecs-service -h
 Usage of update-aws-ecs-service:
   -cluster string
     	cluster name
@@ -49,7 +52,7 @@ docker push myrepo/myimg:newtag
 Then, alter the existing container image only, like AWS CodePipeline does.
 
 ```
-AWS_PROFILE=myprofile AWS_REGION=myregion $GOPATH/bin/update-aws-ecs-service \
+AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service \
   -cluster mycluster \
   -service myservice \
   -container-image mycontainer=myrepo/myimg:newtag
@@ -58,7 +61,7 @@ AWS_PROFILE=myprofile AWS_REGION=myregion $GOPATH/bin/update-aws-ecs-service \
 Alternatively, you can also alter environment variables and service desired count.
 
 ```
-AWS_PROFILE=myprofile AWS_REGION=myregion $GOPATH/bin/update-aws-ecs-service \
+AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service \
   -cluster mycluster \
   -service myservice \
   -container-image mycontainer=myrepo/myimg:newtag \
