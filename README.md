@@ -99,4 +99,5 @@ AWS_REGION=myregion AWS_PROFILE=myprofile enforce-aws-ecs-asg-launchconfig \
 ```
 
 ----
-1 - https://unix.stackexchange.com/a/111557/19393
+
+1. https://unix.stackexchange.com/a/111557/19393
