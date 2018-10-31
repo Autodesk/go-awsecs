@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/cenkalti/backoff"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -74,6 +75,10 @@ func main() {
 	}
 
 	if err := esu.Apply(); err != nil {
-		log.Fatal(err)
+		if err != awsecs.ErrFailedRollback {
+			log.Fatal(err)
+		} else {
+			os.Exit(1)
+		}
 	}
 }
