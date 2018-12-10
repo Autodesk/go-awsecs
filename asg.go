@@ -188,7 +188,7 @@ func drainAll(ASAPI autoscaling.AutoScaling, ECSAPI ecs.ECS, EC2API ec2.EC2, ins
 		wg.Add(1)
 		go func(thatInstance ecsEC2Instance, index int) {
 			defer wg.Done()
-			errors[index] = detachAndDrain(ASAPI, ECSAPI, thatInstance, clusterName, asgName)
+			errors[index] = detachAndDrain(ASAPI, ECSAPI, thatInstance, asgName, clusterName)
 			if errors[index] == nil {
 				_, err := EC2API.TerminateInstances(&ec2.TerminateInstancesInput{
 					InstanceIds: []*string{

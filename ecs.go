@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	// EnvKnockOffValue value used to knock off environment variables
-	EnvKnockOffValue = ""
+	// EnvKnockOutValue value used to knock off environment variables
+	EnvKnockOutValue = ""
 	// ErrDeploymentChangedElsewhere the deployment was changed elsewhere
 	ErrDeploymentChangedElsewhere = backoff.Permanent(errors.New("the deployment was changed elsewhere"))
 	// ErrOtherThanPrimaryDeploymentFound service update didn't complete
@@ -71,7 +71,7 @@ func alterEnvironment(copy ecs.ContainerDefinition, envMap map[string]string) ec
 		found := false
 		for i < len(copy.Environment) {
 			environment := copy.Environment[i]
-			if *environment.Name == name && value == EnvKnockOffValue {
+			if *environment.Name == name && value == EnvKnockOutValue {
 				copy.Environment = append(copy.Environment[:i], copy.Environment[i+1:]...)
 				found = true
 				i--
@@ -81,7 +81,7 @@ func alterEnvironment(copy ecs.ContainerDefinition, envMap map[string]string) ec
 			}
 			i++
 		}
-		if !found {
+		if !found && value != EnvKnockOutValue {
 			copy.Environment = append(copy.Environment, &ecs.KeyValuePair{Name: aws.String(name), Value: aws.String(value)})
 		}
 	}
