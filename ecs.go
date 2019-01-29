@@ -33,8 +33,10 @@ func copy(input ecs.TaskDefinition) ecs.RegisterTaskDefinitionInput {
 	output.Cpu = input.Cpu
 	output.ExecutionRoleArn = input.ExecutionRoleArn
 	output.Family = input.Family
+	output.IpcMode = input.IpcMode
 	output.Memory = input.Memory
 	output.NetworkMode = input.NetworkMode
+	output.PidMode = input.PidMode
 	output.PlacementConstraints = input.PlacementConstraints
 	output.RequiresCompatibilities = input.RequiresCompatibilities
 	output.TaskRoleArn = input.TaskRoleArn

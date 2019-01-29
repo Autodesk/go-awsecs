@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"git.autodesk.com/t-villa/go-awsecs"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/cenkalti/backoff"
@@ -55,6 +56,8 @@ func (kvs mapMapFlag) Set(value string) error {
 func main() {
 	cluster := flag.String("cluster", "", "cluster name")
 	service := flag.String("service", "", "service name")
+	profile := flag.String("profile", "", "profile name")
+	region := flag.String("region", "", "region name")
 	desiredCount := flag.Int64("desired-count", -1, "desired-count (negative: no change)")
 
 	var images mapFlag = map[string]string{}
@@ -64,8 +67,16 @@ func main() {
 	flag.Var(&envs, "container-envvar", "container-name=envvar-name=envvar-value")
 	flag.Parse()
 
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		Profile: *profile,
+	}))
+
+	if *region != "" {
+		sess = sess.Copy(&aws.Config{Region: region})
+	}
+
 	esu := awsecs.ECSServiceUpdate{
-		API:          *ecs.New(session.Must(session.NewSession())),
+		API:          *ecs.New(sess),
 		Cluster:      *cluster,
 		Service:      *service,
 		Image:        images,
