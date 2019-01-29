@@ -33,6 +33,10 @@ Usage of update-aws-ecs-service:
     	container-name=image
   -desired-count int
     	desired-count (negative: no change) (default -1)
+  -profile string
+    	profile name
+  -region string
+    	region name
   -service string
     	service name
 ```
@@ -49,7 +53,7 @@ docker push myrepo/myimg:newtag
 Then, alter the existing container image only, like AWS CodePipeline does.
 
 ```
-AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service \
+update-aws-ecs-service \
   -cluster mycluster \
   -service myservice \
   -container-image mycontainer=myrepo/myimg:newtag
@@ -58,7 +62,7 @@ AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service \
 Alternatively, you can also alter environment variables and service desired count.
 
 ```
-AWS_PROFILE=myprofile AWS_REGION=myregion update-aws-ecs-service \
+update-aws-ecs-service \
   -cluster mycluster \
   -service myservice \
   -container-image mycontainer=myrepo/myimg:newtag \
@@ -87,12 +91,16 @@ Usage of enforce-aws-ecs-asg-launchconfig:
     	asg name
   -cluster string
     	cluster name
+  -profile string
+    	profile name
+  -region string
+    	region name
 ```
 
 Example:
 
 ```
-AWS_REGION=myregion AWS_PROFILE=myprofile enforce-aws-ecs-asg-launchconfig \
+enforce-aws-ecs-asg-launchconfig \
   -asg myasgname \
   -cluster myclustername
 # default timeout for the operation is 15 minutes
