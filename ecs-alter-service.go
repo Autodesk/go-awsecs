@@ -18,14 +18,14 @@ var (
 	ErrFailedRollback = errors.New("failed rollback")
 )
 
-func alterServiceOrValidatedRollBack(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, desiredCount *int64, bo backoff.BackOff) error {
-	oldsvc, alterSvcErr := alterServiceValidateDeployment(api, cluster, service, imageMap, envMaps, desiredCount, bo)
+func alterServiceOrValidatedRollBack(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, desiredCount *int64, bo backoff.BackOff) error {
+	oldsvc, alterSvcErr := alterServiceValidateDeployment(api, cluster, service, imageMap, envMaps, secretMaps, desiredCount, bo)
 	if alterSvcErr != nil {
 		operation := func() error {
 			if oldsvc.ServiceName == nil {
 				return ErrPermanentNothingToRollback
 			}
-			log.Print("attempt rollback")
+			log.Printf("attempt rollback %v", alterSvcErr)
 			rollback, err := api.UpdateService(&ecs.UpdateServiceInput{Cluster: oldsvc.ClusterArn, Service: oldsvc.ServiceName, TaskDefinition: oldsvc.TaskDefinition, DesiredCount: oldsvc.DesiredCount})
 			if err != nil {
 				return err

@@ -31,6 +31,8 @@ Usage of update-aws-ecs-service:
     	container-name=envvar-name=envvar-value
   -container-image value
     	container-name=image
+  -container-secret value
+    	container-name=secret-name=secret-valuefrom
   -desired-count int
     	desired-count (negative: no change) (default -1)
   -profile string

@@ -62,9 +62,11 @@ func main() {
 
 	var images mapFlag = map[string]string{}
 	var envs mapMapFlag = map[string]map[string]string{}
+	var secrets mapMapFlag = map[string]map[string]string{}
 
 	flag.Var(&images, "container-image", "container-name=image")
 	flag.Var(&envs, "container-envvar", "container-name=envvar-name=envvar-value")
+	flag.Var(&secrets, "container-secret", "container-name=secret-name=secret-valuefrom")
 	flag.Parse()
 
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
@@ -81,6 +83,7 @@ func main() {
 		Service:      *service,
 		Image:        images,
 		Environment:  envs,
+		Secrets:      secrets,
 		DesiredCount: int64ptr(*desiredCount),
 		BackOff:      backoff.NewExponentialBackOff(),
 	}
