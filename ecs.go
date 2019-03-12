@@ -103,23 +103,23 @@ func alterEnvironment(copy ecs.ContainerDefinition, envMap map[string]string) ec
 }
 
 func alterSecret(copy ecs.ContainerDefinition, secretMap map[string]string) ecs.ContainerDefinition {
-	for name, value := range secretMap {
+	for name, valueFrom := range secretMap {
 		i := 0
 		found := false
 		for i < len(copy.Secrets) {
 			secret := copy.Secrets[i]
-			if *secret.Name == name && value == EnvKnockOutValue {
+			if *secret.Name == name && valueFrom == EnvKnockOutValue {
 				copy.Secrets = append(copy.Secrets[:i], copy.Secrets[i+1:]...)
 				found = true
 				i--
 			} else if *secret.Name == name {
-				secret.ValueFrom = aws.String(value)
+				secret.ValueFrom = aws.String(valueFrom)
 				found = true
 			}
 			i++
 		}
-		if !found && value != EnvKnockOutValue {
-			copy.Secrets = append(copy.Secrets, &ecs.Secret{Name: aws.String(name), ValueFrom: aws.String(value)})
+		if !found && valueFrom != EnvKnockOutValue {
+			copy.Secrets = append(copy.Secrets, &ecs.Secret{Name: aws.String(name), ValueFrom: aws.String(valueFrom)})
 		}
 	}
 	return copy
