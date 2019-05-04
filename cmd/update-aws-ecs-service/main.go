@@ -58,6 +58,7 @@ func main() {
 	service := flag.String("service", "", "service name")
 	profile := flag.String("profile", "", "profile name")
 	region := flag.String("region", "", "region name")
+	taskdef := flag.String("taskdef", "", "base task definition (instead of current)")
 	desiredCount := flag.Int64("desired-count", -1, "desired-count (negative: no change)")
 
 	var images mapFlag = map[string]string{}
@@ -85,6 +86,7 @@ func main() {
 		Environment:  envs,
 		Secrets:      secrets,
 		DesiredCount: int64ptr(*desiredCount),
+		Taskdef:      *taskdef,
 		BackOff:      backoff.NewExponentialBackOff(),
 	}
 
