@@ -70,6 +70,7 @@ update-aws-ecs-service \
   -cluster mycluster \
   -service myservice \
   -container-image mycontainer=myrepo/myimg:newtag
+# default timeout for the operation is 15 minutes
 ```
 
 Alternatively, you can also alter environment variables and service desired count.
