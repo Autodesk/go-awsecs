@@ -4,5 +4,5 @@ go 1.12
 
 require (
 	github.com/aws/aws-sdk-go v1.19.24
-	github.com/cenkalti/backoff v2.1.1+incompatible
+	github.com/cenkalti/backoff v0.0.0-20190506075156-2146c9339422
 )
