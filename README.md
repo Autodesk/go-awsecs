@@ -135,19 +135,21 @@ That way Terraform will be maintained as the "provisioning tool" and `update-aws
 
  - Why not just do `aws ecs wait services-stable` commands after the `terraform apply` command
 
-   Caveat 1: Evaluates service stability but not that the desired deployment is applied the service may have become
+   Caveat 1: `wait` evaluates service stability but not that the desired deployment is applied the service may have become
    stable because it was rolled back or rolled forward somewhere else, there is no certainty that "our" deployment was
    the one that rendered the service stable
-   Caveat 2: Does not handle service deployment rollback
+   
+   Caveat 2: `wait` does not handle service deployment rollback
 
  - Why not just do `curl|httpie` commands after the `terraform apply` command until a desired result is obtained
-   probably after a number of times, for example by looking at a endpoint that returns the "deployed version" like:
-   http://myservice.example.com/api/version returns `{"version": "the desired version"}`
+   probably after a number of times, for example by looking at an endpoint that returns the "deployed version" like:
+   http://myservice.example.com/api/version returns `{"version": "v2.0.0"}`
 
    Caveat 1: This works only for services which are public (internet reachable) or reachable from the same location
    where `curl|httpie` is executed, this is not always the case, some services are internal or not reachable from every
    location
-   Caveat 2: Works only for HTTP services
+   
+   Caveat 2: Works only for HTTP services that provide a "version" endpoint
 
 ### update-aws-ecs-service compared to AWS CodeDeploy
 
