@@ -2,7 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/andresvia/go-awsecs"
+	"github.com/Autodesk/go-awsecs"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -14,14 +15,22 @@ import (
 func main() {
 	cluster := flag.String("cluster", "", "cluster name")
 	asg := flag.String("asg", "", "asg name")
+	profile := flag.String("profile", "", "profile name")
+	region := flag.String("region", "", "region name")
 	flag.Parse()
 
-	session := session.Must(session.NewSession())
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		Profile: *profile,
+	}))
+
+	if *region != "" {
+		sess = sess.Copy(&aws.Config{Region: region})
+	}
 
 	elc := awsecs.EnforceLaunchConfig{
-		ECSAPI:         *ecs.New(session),
-		ASAPI:          *autoscaling.New(session),
-		EC2API:         *ec2.New(session),
+		ECSAPI:         *ecs.New(sess),
+		ASAPI:          *autoscaling.New(sess),
+		EC2API:         *ec2.New(sess),
 		ASGName:        *asg,
 		ECSClusterName: *cluster,
 		BackOff:        backoff.NewExponentialBackOff(),
