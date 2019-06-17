@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	// EnvKnockOffValue value used to knock off environment variables
-	EnvKnockOffValue = ""
+	// EnvKnockOutValue value used to knock off environment variables
+	EnvKnockOutValue = ""
 	// ErrDeploymentChangedElsewhere the deployment was changed elsewhere
-	ErrDeploymentChangedElsewhere = backoff.Permanent(errors.New("the deployment was changed elsewhere"))
+	ErrDeploymentChangedElsewhere = errors.New("the deployment was changed elsewhere")
 	// ErrOtherThanPrimaryDeploymentFound service update didn't complete
 	ErrOtherThanPrimaryDeploymentFound = errors.New("other than PRIMARY deployment found")
 	// ErrNotRunningDesiredCount service update completed but number of containers not matching desired count
@@ -33,8 +33,10 @@ func copy(input ecs.TaskDefinition) ecs.RegisterTaskDefinitionInput {
 	output.Cpu = input.Cpu
 	output.ExecutionRoleArn = input.ExecutionRoleArn
 	output.Family = input.Family
+	output.IpcMode = input.IpcMode
 	output.Memory = input.Memory
 	output.NetworkMode = input.NetworkMode
+	output.PidMode = input.PidMode
 	output.PlacementConstraints = input.PlacementConstraints
 	output.RequiresCompatibilities = input.RequiresCompatibilities
 	output.TaskRoleArn = input.TaskRoleArn
@@ -65,13 +67,25 @@ func alterEnvironments(copy ecs.RegisterTaskDefinitionInput, envMaps map[string]
 	return copy
 }
 
+func alterSecrets(copy ecs.RegisterTaskDefinitionInput, secretMaps map[string]map[string]string) ecs.RegisterTaskDefinitionInput {
+	for name, secretMap := range secretMaps {
+		for i, containerDefinition := range copy.ContainerDefinitions {
+			if *containerDefinition.Name == name {
+				new := alterSecret(*containerDefinition, secretMap)
+				copy.ContainerDefinitions[i] = &new
+			}
+		}
+	}
+	return copy
+}
+
 func alterEnvironment(copy ecs.ContainerDefinition, envMap map[string]string) ecs.ContainerDefinition {
 	for name, value := range envMap {
 		i := 0
 		found := false
 		for i < len(copy.Environment) {
 			environment := copy.Environment[i]
-			if *environment.Name == name && value == EnvKnockOffValue {
+			if *environment.Name == name && value == EnvKnockOutValue {
 				copy.Environment = append(copy.Environment[:i], copy.Environment[i+1:]...)
 				found = true
 				i--
@@ -81,19 +95,42 @@ func alterEnvironment(copy ecs.ContainerDefinition, envMap map[string]string) ec
 			}
 			i++
 		}
-		if !found {
+		if !found && value != EnvKnockOutValue {
 			copy.Environment = append(copy.Environment, &ecs.KeyValuePair{Name: aws.String(name), Value: aws.String(value)})
 		}
 	}
 	return copy
 }
 
-func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMaps map[string]map[string]string) (string, error) {
+func alterSecret(copy ecs.ContainerDefinition, secretMap map[string]string) ecs.ContainerDefinition {
+	for name, valueFrom := range secretMap {
+		i := 0
+		found := false
+		for i < len(copy.Secrets) {
+			secret := copy.Secrets[i]
+			if *secret.Name == name && valueFrom == EnvKnockOutValue {
+				copy.Secrets = append(copy.Secrets[:i], copy.Secrets[i+1:]...)
+				found = true
+				i--
+			} else if *secret.Name == name {
+				secret.ValueFrom = aws.String(valueFrom)
+				found = true
+			}
+			i++
+		}
+		if !found && valueFrom != EnvKnockOutValue {
+			copy.Secrets = append(copy.Secrets, &ecs.Secret{Name: aws.String(name), ValueFrom: aws.String(valueFrom)})
+		}
+	}
+	return copy
+}
+
+func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string) (string, error) {
 	output, err := api.DescribeTaskDefinition(&ecs.DescribeTaskDefinitionInput{TaskDefinition: aws.String(taskdef)})
 	if err != nil {
 		return "", err
 	}
-	copy := alterEnvironments(alterImages(copy(*output.TaskDefinition), imageMap), envMaps)
+	copy := alterSecrets(alterEnvironments(alterImages(copy(*output.TaskDefinition), imageMap), envMaps), secretMaps)
 	new, err := api.RegisterTaskDefinition(&copy)
 	if err != nil {
 		return "", err
@@ -102,13 +139,17 @@ func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMap
 	return *arn, nil
 }
 
-func alterService(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, desiredCount *int64) (ecs.Service, ecs.Service, error) {
+func alterService(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, desiredCount *int64, taskdef string) (ecs.Service, ecs.Service, error) {
 	output, err := api.DescribeServices(&ecs.DescribeServicesInput{Cluster: aws.String(cluster), Services: []*string{aws.String(service)}})
 	if err != nil {
 		return ecs.Service{}, ecs.Service{}, err
 	}
 	for _, svc := range output.Services {
-		newTd, err := copyTaskDef(api, *svc.TaskDefinition, imageMap, envMaps)
+		srcTaskDef := svc.TaskDefinition
+		if taskdef != "" {
+			srcTaskDef = &taskdef
+		}
+		newTd, err := copyTaskDef(api, *srcTaskDef, imageMap, envMaps, secretMaps)
 		if err != nil {
 			return *svc, ecs.Service{}, err
 		}
@@ -124,18 +165,39 @@ func alterService(api ecs.ECS, cluster, service string, imageMap map[string]stri
 	return ecs.Service{}, ecs.Service{}, ErrServiceNotFound
 }
 
-func validateDeployment(api ecs.ECS, ecsService ecs.Service) error {
+func validateDeployment(api ecs.ECS, ecsService ecs.Service, bo backoff.BackOff) error {
 	for _, ecsDeployment := range ecsService.Deployments {
 		if *ecsDeployment.Status == "PRIMARY" {
-			output, err := api.DescribeServices(&ecs.DescribeServicesInput{Cluster: ecsService.ClusterArn, Services: []*string{ecsService.ServiceName}})
+
+			var output *ecs.DescribeServicesOutput
+			var err error
+
+			operation := func() error {
+				output, err = api.DescribeServices(&ecs.DescribeServicesInput{Cluster: ecsService.ClusterArn, Services: []*string{ecsService.ServiceName}})
+				if err != nil {
+					return err
+				}
+				for _, svc := range output.Services {
+					for _, deployment := range svc.Deployments {
+						if *deployment.Status == "PRIMARY" && *deployment.Id != *ecsDeployment.Id {
+							return ErrDeploymentChangedElsewhere
+						}
+					}
+				}
+				return nil
+			}
+
+			err = backoff.Retry(operation, backoff.WithMaxRetries(bo, 5))
+			if err == ErrDeploymentChangedElsewhere {
+				return backoff.Permanent(err)
+			}
+
 			if err != nil {
 				return err
 			}
+
 			for _, svc := range output.Services {
 				for _, deployment := range svc.Deployments {
-					if *deployment.Status == "PRIMARY" && *deployment.Id != *ecsDeployment.Id {
-						return ErrDeploymentChangedElsewhere
-					}
 					if *deployment.Id != *ecsDeployment.Id {
 						return ErrOtherThanPrimaryDeploymentFound
 					}
@@ -155,14 +217,16 @@ func validateDeployment(api ecs.ECS, ecsService ecs.Service) error {
 	return errNoPrimaryDeployment
 }
 
-func alterServiceValidateDeployment(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, desiredCount *int64, bo backoff.BackOff) (ecs.Service, error) {
-	oldsvc, newsvc, err := alterService(api, cluster, service, imageMap, envMaps, desiredCount)
+func alterServiceValidateDeployment(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, desiredCount *int64, taskdef string, bo backoff.BackOff) (ecs.Service, error) {
+	oldsvc, newsvc, err := alterService(api, cluster, service, imageMap, envMaps, secretMaps, desiredCount, taskdef)
 	if err != nil {
 		return oldsvc, err
 	}
+	var prevErr error
 	operation := func() error {
-		err := validateDeployment(api, newsvc)
-		if err != nil {
+		err := validateDeployment(api, newsvc, bo)
+		if err != prevErr && err != nil {
+			prevErr = err
 			log.Print(err)
 		}
 		return err
@@ -177,11 +241,13 @@ type ECSServiceUpdate struct {
 	Service      string                       // Name of the service
 	Image        map[string]string            // Map of container names and images
 	Environment  map[string]map[string]string // Map of container names environment variable name and value
+	Secrets      map[string]map[string]string // Map of container names environment variable name and valueFrom
 	DesiredCount *int64                       // If nil the service desired count is not altered
 	BackOff      backoff.BackOff              // BackOff strategy to use when validating the update
+	Taskdef      string                       // If non empty used as base task definition instead of the current task definition
 }
 
 // Apply the ECS Service Update
 func (e *ECSServiceUpdate) Apply() error {
-	return alterServiceOrValidatedRollBack(e.API, e.Cluster, e.Service, e.Image, e.Environment, e.DesiredCount, e.BackOff)
+	return alterServiceOrValidatedRollBack(e.API, e.Cluster, e.Service, e.Image, e.Environment, e.Secrets, e.DesiredCount, e.Taskdef, e.BackOff)
 }

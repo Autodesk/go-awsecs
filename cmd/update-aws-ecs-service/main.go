@@ -3,11 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/andresvia/go-awsecs"
+	"github.com/Autodesk/go-awsecs"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/cenkalti/backoff"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -54,26 +56,45 @@ func (kvs mapMapFlag) Set(value string) error {
 func main() {
 	cluster := flag.String("cluster", "", "cluster name")
 	service := flag.String("service", "", "service name")
+	profile := flag.String("profile", "", "profile name")
+	region := flag.String("region", "", "region name")
+	taskdef := flag.String("taskdef", "", "base task definition (instead of current)")
 	desiredCount := flag.Int64("desired-count", -1, "desired-count (negative: no change)")
 
 	var images mapFlag = map[string]string{}
 	var envs mapMapFlag = map[string]map[string]string{}
+	var secrets mapMapFlag = map[string]map[string]string{}
 
 	flag.Var(&images, "container-image", "container-name=image")
 	flag.Var(&envs, "container-envvar", "container-name=envvar-name=envvar-value")
+	flag.Var(&secrets, "container-secret", "container-name=secret-name=secret-valuefrom")
 	flag.Parse()
 
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		Profile: *profile,
+	}))
+
+	if *region != "" {
+		sess = sess.Copy(&aws.Config{Region: region})
+	}
+
 	esu := awsecs.ECSServiceUpdate{
-		API:          *ecs.New(session.Must(session.NewSession())),
+		API:          *ecs.New(sess),
 		Cluster:      *cluster,
 		Service:      *service,
 		Image:        images,
 		Environment:  envs,
+		Secrets:      secrets,
 		DesiredCount: int64ptr(*desiredCount),
+		Taskdef:      *taskdef,
 		BackOff:      backoff.NewExponentialBackOff(),
 	}
 
 	if err := esu.Apply(); err != nil {
-		log.Fatal(err)
+		if err != awsecs.ErrFailedRollback {
+			log.Fatal(err)
+		} else {
+			os.Exit(1)
+		}
 	}
 }
