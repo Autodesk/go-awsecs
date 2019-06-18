@@ -44,3 +44,13 @@ func TestNeedReplacement(t *testing.T) {
     t.Errorf("unexpected")
   }
 }
+
+func TestFilterInstancesToReplace(t *testing.T) {
+	name := ""
+	dontReplace := autoscaling.Instance{LaunchConfigurationName: &name}
+	replace := autoscaling.Instance{}
+	listToReplace := filterInstancesToReplace(&name, []*autoscaling.Instance{&dontReplace, &replace})
+	if listToReplace[0] != replace {
+		t.Errorf("unexpected")
+	}
+}

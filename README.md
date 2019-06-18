@@ -1,5 +1,7 @@
 # go-awsecs
 
+[![travis ci](https://api.travis-ci.org/Autodesk/go-awsecs.svg?branch=master)](https://travis-ci.org/Autodesk/go-awsecs)
+
 Library and tools for AWS ECS operations.
 
 # contributing
