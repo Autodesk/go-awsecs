@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
+	"github.com/aws/aws-sdk-go/service/autoscaling/autoscalingiface"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/cenkalti/backoff"
@@ -13,7 +14,7 @@ import (
 	"sync"
 )
 
-func listASGInstaces(ASAPI autoscaling.AutoScaling, asgName string) ([]*autoscaling.Instance, *string, error) {
+func listASGInstaces(ASAPI autoscalingiface.AutoScalingAPI, asgName string) ([]*autoscaling.Instance, *string, error) {
 	output, err := ASAPI.DescribeAutoScalingGroups(&autoscaling.DescribeAutoScalingGroupsInput{
 		AutoScalingGroupNames: []*string{aws.String(asgName)},
 	})
@@ -213,7 +214,7 @@ func drainAll(ASAPI autoscaling.AutoScaling, ECSAPI ecs.ECS, EC2API ec2.EC2, ins
 }
 
 func enforceLaunchConfig(ECSAPI ecs.ECS, ASAPI autoscaling.AutoScaling, EC2API ec2.EC2, asgName, clusterName string, bo backoff.BackOff) error {
-	asgInstances, expectedLaunchConfig, err := listASGInstaces(ASAPI, asgName)
+	asgInstances, expectedLaunchConfig, err := listASGInstaces(&ASAPI, asgName)
 	if err != nil {
 		return err
 	}
