@@ -75,6 +75,16 @@ update-aws-ecs-service \
 # default timeout for the operation is 15 minutes
 ```
 
+You may also alter more than one container at the same time.
+
+```
+update-aws-ecs-service \
+  -cluster mycluster \
+  -service myservice \
+  -container-image mycontainer1=myrepo/myimg1:newtag \
+  -container-image mycontainer2=myrepo/myimg2:newtag
+```
+
 Alternatively, you can also alter environment variables and service desired count.
 
 ```
