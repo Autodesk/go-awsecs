@@ -2,8 +2,9 @@ package awsecs
 
 import (
 	"errors"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v3"
 	"log"
 )
 
@@ -26,7 +27,7 @@ func alterServiceOrValidatedRollBack(api ecs.ECS, cluster, service string, image
 				return ErrPermanentNothingToRollback
 			}
 			log.Printf("attempt rollback %v", alterSvcErr)
-			rollback, err := api.UpdateService(&ecs.UpdateServiceInput{Cluster: oldsvc.ClusterArn, Service: oldsvc.ServiceName, TaskDefinition: oldsvc.TaskDefinition, DesiredCount: oldsvc.DesiredCount})
+			rollback, err := api.UpdateService(&ecs.UpdateServiceInput{Cluster: oldsvc.ClusterArn, Service: oldsvc.ServiceName, TaskDefinition: oldsvc.TaskDefinition, DesiredCount: oldsvc.DesiredCount, ForceNewDeployment: aws.Bool(true)})
 			if err != nil {
 				return err
 			}
