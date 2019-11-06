@@ -1,11 +1,13 @@
 package awsecs
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v3"
 	"log"
+	"reflect"
 )
 
 var (
@@ -27,56 +29,95 @@ var (
 	errNoPrimaryDeployment = backoff.Permanent(errors.New("no PRIMARY deployment"))
 )
 
-func copy(input ecs.TaskDefinition) ecs.RegisterTaskDefinitionInput {
+func copyTd(input ecs.TaskDefinition, tags []*ecs.Tag) ecs.RegisterTaskDefinitionInput {
+	obj, err := json.Marshal(input)
+	if err != nil {
+		panic(err)
+	}
+	inputClone := ecs.TaskDefinition{}
+	err = json.Unmarshal(obj, &inputClone)
+	if err != nil {
+		panic(err)
+	}
 	output := ecs.RegisterTaskDefinitionInput{}
-	output.ContainerDefinitions = input.ContainerDefinitions
-	output.Cpu = input.Cpu
-	output.ExecutionRoleArn = input.ExecutionRoleArn
-	output.Family = input.Family
-	output.IpcMode = input.IpcMode
-	output.Memory = input.Memory
-	output.NetworkMode = input.NetworkMode
-	output.PidMode = input.PidMode
-	output.PlacementConstraints = input.PlacementConstraints
-	output.RequiresCompatibilities = input.RequiresCompatibilities
-	output.TaskRoleArn = input.TaskRoleArn
-	output.Volumes = input.Volumes
+	output.ContainerDefinitions = inputClone.ContainerDefinitions
+	output.Cpu = inputClone.Cpu
+	output.ExecutionRoleArn = inputClone.ExecutionRoleArn
+	output.Family = inputClone.Family
+	// output.InferenceAccelerators // not supported by the current version of the SDK
+	output.IpcMode = inputClone.IpcMode
+	output.Memory = inputClone.Memory
+	output.NetworkMode = inputClone.NetworkMode
+	output.PidMode = inputClone.PidMode
+	output.PlacementConstraints = inputClone.PlacementConstraints
+	output.ProxyConfiguration = inputClone.ProxyConfiguration
+	output.RequiresCompatibilities = inputClone.RequiresCompatibilities
+	output.Tags = tags
+	output.TaskRoleArn = inputClone.TaskRoleArn
+	output.Volumes = inputClone.Volumes
 	return output
 }
 
 func alterImages(copy ecs.RegisterTaskDefinitionInput, imageMap map[string]string) ecs.RegisterTaskDefinitionInput {
+	obj, err := json.Marshal(copy)
+	if err != nil {
+		panic(err)
+	}
+	copyClone := ecs.RegisterTaskDefinitionInput{}
+	err = json.Unmarshal(obj, &copyClone)
+	if err != nil {
+		panic(err)
+	}
 	for name, image := range imageMap {
-		for _, containerDefinition := range copy.ContainerDefinitions {
+		for _, containerDefinition := range copyClone.ContainerDefinitions {
 			if *containerDefinition.Name == name {
 				containerDefinition.Image = aws.String(image)
 			}
 		}
 	}
-	return copy
+	return copyClone
 }
 
 func alterEnvironments(copy ecs.RegisterTaskDefinitionInput, envMaps map[string]map[string]string) ecs.RegisterTaskDefinitionInput {
+	obj, err := json.Marshal(copy)
+	if err != nil {
+		panic(err)
+	}
+	copyClone := ecs.RegisterTaskDefinitionInput{}
+	err = json.Unmarshal(obj, &copyClone)
+	if err != nil {
+		panic(err)
+	}
 	for name, envMap := range envMaps {
-		for i, containerDefinition := range copy.ContainerDefinitions {
+		for i, containerDefinition := range copyClone.ContainerDefinitions {
 			if *containerDefinition.Name == name {
-				new := alterEnvironment(*containerDefinition, envMap)
-				copy.ContainerDefinitions[i] = &new
+				altered := alterEnvironment(*containerDefinition, envMap)
+				copyClone.ContainerDefinitions[i] = &altered
 			}
 		}
 	}
-	return copy
+	return copyClone
 }
 
 func alterSecrets(copy ecs.RegisterTaskDefinitionInput, secretMaps map[string]map[string]string) ecs.RegisterTaskDefinitionInput {
+	obj, err := json.Marshal(copy)
+	if err != nil {
+		panic(err)
+	}
+	copyClone := ecs.RegisterTaskDefinitionInput{}
+	err = json.Unmarshal(obj, &copyClone)
+	if err != nil {
+		panic(err)
+	}
 	for name, secretMap := range secretMaps {
-		for i, containerDefinition := range copy.ContainerDefinitions {
+		for i, containerDefinition := range copyClone.ContainerDefinitions {
 			if *containerDefinition.Name == name {
-				new := alterSecret(*containerDefinition, secretMap)
-				copy.ContainerDefinitions[i] = &new
+				altered := alterSecret(*containerDefinition, secretMap)
+				copyClone.ContainerDefinitions[i] = &altered
 			}
 		}
 	}
-	return copy
+	return copyClone
 }
 
 func alterEnvironment(copy ecs.ContainerDefinition, envMap map[string]string) ecs.ContainerDefinition {
@@ -130,13 +171,28 @@ func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMap
 	if err != nil {
 		return "", err
 	}
-	copy := alterSecrets(alterEnvironments(alterImages(copy(*output.TaskDefinition), imageMap), envMaps), secretMaps)
-	new, err := api.RegisterTaskDefinition(&copy)
-	if err != nil {
-		return "", err
+
+	asRegisterTaskDefinitionInput := copyTd(*output.TaskDefinition, output.Tags)
+	tdCopy := alterSecrets(alterEnvironments(alterImages(asRegisterTaskDefinitionInput, imageMap), envMaps), secretMaps)
+
+	// if os.Getenv("DEBUG") == "YES" {
+	// 	out, _ := json.Marshal(asRegisterTaskDefinitionInput)
+	// 	fmt.Println(string(out))
+	// 	out, _ = json.Marshal(tdCopy)
+	// 	fmt.Println(string(out))
+	// 	panic("something")
+	// }
+
+	if reflect.DeepEqual(asRegisterTaskDefinitionInput, tdCopy) {
+		return *output.TaskDefinition.TaskDefinitionArn, nil
+	} else {
+		tdNew, err := api.RegisterTaskDefinition(&tdCopy)
+		if err != nil {
+			return "", err
+		}
+		arn := tdNew.TaskDefinition.TaskDefinitionArn
+		return *arn, nil
 	}
-	arn := new.TaskDefinition.TaskDefinitionArn
-	return *arn, nil
 }
 
 func alterService(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, desiredCount *int64, taskdef string) (ecs.Service, ecs.Service, error) {
@@ -156,7 +212,7 @@ func alterService(api ecs.ECS, cluster, service string, imageMap map[string]stri
 		if desiredCount == nil {
 			desiredCount = svc.DesiredCount
 		}
-		updated, err := api.UpdateService(&ecs.UpdateServiceInput{Cluster: aws.String(cluster), Service: aws.String(service), TaskDefinition: aws.String(newTd), DesiredCount: desiredCount})
+		updated, err := api.UpdateService(&ecs.UpdateServiceInput{Cluster: aws.String(cluster), Service: aws.String(service), TaskDefinition: aws.String(newTd), DesiredCount: desiredCount, ForceNewDeployment: aws.Bool(true)})
 		if err != nil {
 			return *svc, ecs.Service{}, err
 		}

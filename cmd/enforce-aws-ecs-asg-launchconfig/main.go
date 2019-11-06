@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecs"
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v3"
 	"log"
 )
 
