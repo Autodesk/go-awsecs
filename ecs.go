@@ -175,14 +175,6 @@ func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMap
 	asRegisterTaskDefinitionInput := copyTd(*output.TaskDefinition, output.Tags)
 	tdCopy := alterSecrets(alterEnvironments(alterImages(asRegisterTaskDefinitionInput, imageMap), envMaps), secretMaps)
 
-	// if os.Getenv("DEBUG") == "YES" {
-	// 	out, _ := json.Marshal(asRegisterTaskDefinitionInput)
-	// 	fmt.Println(string(out))
-	// 	out, _ = json.Marshal(tdCopy)
-	// 	fmt.Println(string(out))
-	// 	panic("something")
-	// }
-
 	if reflect.DeepEqual(asRegisterTaskDefinitionInput, tdCopy) {
 		return *output.TaskDefinition.TaskDefinitionArn, nil
 	} else {
