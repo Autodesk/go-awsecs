@@ -1,12 +1,12 @@
 package awsecs
 
 import (
+	"encoding/json"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
 )
 
 func alterLogConfigurationLogDriverOptions(copy ecs.LogConfiguration, overrides map[string]map[string]string) ecs.LogConfiguration {
-	optionChanged := false
 	knockOutDriver := ""
 	for logDriver, overrides := range overrides {
 		if copy.LogDriver != nil && *copy.LogDriver == logDriver {
@@ -14,7 +14,9 @@ func alterLogConfigurationLogDriverOptions(copy ecs.LogConfiguration, overrides 
 				if optionName == EnvKnockOutValue {
 					knockOutDriver = logDriver
 				}
-				optionChanged = true
+				if copy.Options == nil {
+					copy.Options = map[string]*string{}
+				}
 				copy.Options[optionName] = aws.String(optionValue)
 				if optionValue == EnvKnockOutValue || optionName == EnvKnockOutValue {
 					delete(copy.Options, optionName)
@@ -23,14 +25,16 @@ func alterLogConfigurationLogDriverOptions(copy ecs.LogConfiguration, overrides 
 		}
 	}
 	if knockOutDriver != "" {
-		optionChanged = false
 		delete(overrides, knockOutDriver)
 		copy.LogDriver = nil
 	}
-	if !optionChanged && len(overrides) == 1 {
+	if copy.LogDriver == nil && len(overrides) == 1 {
 		for logDriver, options := range overrides {
 			copy.LogDriver = aws.String(logDriver)
 			for optionName, optionValue := range options {
+				if copy.Options == nil {
+					copy.Options = map[string]*string{}
+				}
 				copy.Options[optionName] = aws.String(optionValue)
 				if optionValue == EnvKnockOutValue || optionName == EnvKnockOutValue {
 					delete(copy.Options, optionName)
@@ -41,9 +45,7 @@ func alterLogConfigurationLogDriverOptions(copy ecs.LogConfiguration, overrides 
 	return copy
 }
 
-
 func alterLogConfigurationLogDriverSecrets(copy ecs.LogConfiguration, overrides map[string]map[string]string) ecs.LogConfiguration {
-	optionChanged := false
 	knockOutDriver := ""
 	for logDriver, overrides := range overrides {
 		if copy.LogDriver != nil && *copy.LogDriver == logDriver {
@@ -51,7 +53,6 @@ func alterLogConfigurationLogDriverSecrets(copy ecs.LogConfiguration, overrides 
 				if optionName == EnvKnockOutValue {
 					knockOutDriver = logDriver
 				}
-				optionChanged = true
 				thisOptionChanged := false
 				for _, secretOption := range copy.SecretOptions {
 					if secretOption != nil && secretOption.Name != nil && *secretOption.Name == optionName {
@@ -59,7 +60,7 @@ func alterLogConfigurationLogDriverSecrets(copy ecs.LogConfiguration, overrides 
 						secretOption.ValueFrom = aws.String(optionValue)
 					}
 				}
-				if ! thisOptionChanged {
+				if !thisOptionChanged {
 					copy.SecretOptions = append(copy.SecretOptions, &ecs.Secret{Name: aws.String(optionName), ValueFrom: aws.String(optionValue)})
 				}
 				var filteredSecretOptions []*ecs.Secret
@@ -77,11 +78,10 @@ func alterLogConfigurationLogDriverSecrets(copy ecs.LogConfiguration, overrides 
 		}
 	}
 	if knockOutDriver != "" {
-		optionChanged = false
 		delete(overrides, knockOutDriver)
 		copy.LogDriver = nil
 	}
-	if !optionChanged && len(overrides) == 1 {
+	if copy.LogDriver == nil && len(overrides) == 1 {
 		for logDriver, options := range overrides {
 			copy.LogDriver = aws.String(logDriver)
 			for optionName, optionValue := range options {
@@ -91,7 +91,7 @@ func alterLogConfigurationLogDriverSecrets(copy ecs.LogConfiguration, overrides 
 						thisOptionChanged = true
 					}
 				}
-				if ! thisOptionChanged {
+				if !thisOptionChanged {
 					copy.SecretOptions = append(copy.SecretOptions, &ecs.Secret{Name: aws.String(optionName), ValueFrom: aws.String(optionValue)})
 				}
 				var filteredSecretOptions []*ecs.Secret
@@ -109,4 +109,51 @@ func alterLogConfigurationLogDriverSecrets(copy ecs.LogConfiguration, overrides 
 		}
 	}
 	return copy
+}
+
+func alterLogConfigurations(copy ecs.RegisterTaskDefinitionInput, containersOptions map[string]map[string]map[string]string, containersSecrets map[string]map[string]map[string]string) ecs.RegisterTaskDefinitionInput {
+	obj, err := json.Marshal(copy)
+	if err != nil {
+		panic(err)
+	}
+	copyClone := ecs.RegisterTaskDefinitionInput{}
+	err = json.Unmarshal(obj, &copyClone)
+	if err != nil {
+		panic(err)
+	}
+	for _, containerDefinition := range copyClone.ContainerDefinitions {
+		for containerName, containerOptions := range containersOptions {
+			if containerDefinition.Name != nil && *containerDefinition.Name == containerName {
+				var logConfiguration *ecs.LogConfiguration
+				if containerDefinition.LogConfiguration != nil {
+					logConfiguration = containerDefinition.LogConfiguration
+				} else {
+					logConfiguration = &ecs.LogConfiguration{}
+				}
+				*logConfiguration = alterLogConfigurationLogDriverOptions(*logConfiguration, containerOptions)
+				if logConfiguration.LogDriver == nil || (logConfiguration.LogDriver != nil && *logConfiguration.LogDriver == "") {
+					containerDefinition.LogConfiguration = nil
+				} else {
+					containerDefinition.LogConfiguration = logConfiguration
+				}
+			}
+		}
+		for containerName, containerOptions := range containersSecrets {
+			if containerDefinition.Name != nil && *containerDefinition.Name == containerName {
+				var logConfiguration *ecs.LogConfiguration
+				if containerDefinition.LogConfiguration != nil {
+					logConfiguration = containerDefinition.LogConfiguration
+				} else {
+					logConfiguration = &ecs.LogConfiguration{}
+				}
+				*logConfiguration = alterLogConfigurationLogDriverSecrets(*logConfiguration, containerOptions)
+				if logConfiguration.LogDriver == nil || (logConfiguration.LogDriver != nil && *logConfiguration.LogDriver == "") {
+					containerDefinition.LogConfiguration = nil
+				} else {
+					containerDefinition.LogConfiguration = logConfiguration
+				}
+			}
+		}
+	}
+	return copyClone
 }

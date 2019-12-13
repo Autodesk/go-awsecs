@@ -177,14 +177,13 @@ func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMap
 
 	if reflect.DeepEqual(asRegisterTaskDefinitionInput, tdCopy) {
 		return *output.TaskDefinition.TaskDefinitionArn, nil
-	} else {
-		tdNew, err := api.RegisterTaskDefinition(&tdCopy)
-		if err != nil {
-			return "", err
-		}
-		arn := tdNew.TaskDefinition.TaskDefinitionArn
-		return *arn, nil
 	}
+	tdNew, err := api.RegisterTaskDefinition(&tdCopy)
+	if err != nil {
+		return "", err
+	}
+	arn := tdNew.TaskDefinition.TaskDefinitionArn
+	return *arn, nil
 }
 
 func alterService(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, desiredCount *int64, taskdef string) (ecs.Service, ecs.Service, error) {
