@@ -64,10 +64,14 @@ func main() {
 	var images mapFlag = map[string]string{}
 	var envs mapMapFlag = map[string]map[string]string{}
 	var secrets mapMapFlag = map[string]map[string]string{}
+	var logopts mapMapMapFlag = map[string]map[string]map[string]string{}
+	var logsecrets mapMapMapFlag = map[string]map[string]map[string]string{}
 
 	flag.Var(&images, "container-image", "container-name=image")
 	flag.Var(&envs, "container-envvar", "container-name=envvar-name=envvar-value")
 	flag.Var(&secrets, "container-secret", "container-name=secret-name=secret-valuefrom")
+	flag.Var(&logopts, "container-logopt", "container-name=logdriver=logopt=value")
+	flag.Var(&logsecrets, "container-logsecret", "container-name=logdriver=logsecret=valuefrom")
 	flag.Parse()
 
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
@@ -79,15 +83,17 @@ func main() {
 	}
 
 	esu := awsecs.ECSServiceUpdate{
-		API:          *ecs.New(sess),
-		Cluster:      *cluster,
-		Service:      *service,
-		Image:        images,
-		Environment:  envs,
-		Secrets:      secrets,
-		DesiredCount: int64ptr(*desiredCount),
-		Taskdef:      *taskdef,
-		BackOff:      backoff.NewExponentialBackOff(),
+		API:              *ecs.New(sess),
+		Cluster:          *cluster,
+		Service:          *service,
+		Image:            images,
+		Environment:      envs,
+		Secrets:          secrets,
+		LogDriverOptions: logopts,
+		LogDriverSecrets: logsecrets,
+		DesiredCount:     int64ptr(*desiredCount),
+		Taskdef:          *taskdef,
+		BackOff:          backoff.NewExponentialBackOff(),
 	}
 
 	if err := esu.Apply(); err != nil {
