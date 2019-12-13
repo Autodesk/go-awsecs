@@ -42,6 +42,10 @@ Usage of update-aws-ecs-service:
     	container-name=envvar-name=envvar-value
   -container-image value
     	container-name=image
+  -container-logopt value
+    	container-name=logdriver=logopt=value
+  -container-logsecret value
+    	container-name=logdriver=logsecret=valuefrom
   -container-secret value
     	container-name=secret-name=secret-valuefrom
   -desired-count int
@@ -105,6 +109,17 @@ update-aws-ecs-service \
   -service myservice \
   -container-envvar mycontainer=myenvvarname= \
   -container-secret mycontainer=mysecretname= \
+```
+
+💡 Combined updates are possible. For example: "Update the application container image and adjust the `awslogs` log driver options for the sidecar container."
+
+```
+update-aws-ecs-service \
+  -cluster example \
+  -service service1-application1 \
+  -container-image application=example.com/service1/application1:1a2b3c4 \
+  -container-logopt sidecar=awslogs=awslogs-group=/com/example/service1/application1 \
+  -container-logopt sidecar=awslogs=awslogs-stream-prefix=sidecar-1a2b3c4
 ```
 
 ### update-aws-ecs-service compared to AWS CodePipeline
