@@ -166,14 +166,14 @@ func alterSecret(copy ecs.ContainerDefinition, secretMap map[string]string) ecs.
 	return copy
 }
 
-func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string) (string, error) {
+func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, logopts map[string]map[string]map[string]string, logsecrets map[string]map[string]map[string]string) (string, error) {
 	output, err := api.DescribeTaskDefinition(&ecs.DescribeTaskDefinitionInput{TaskDefinition: aws.String(taskdef)})
 	if err != nil {
 		return "", err
 	}
 
 	asRegisterTaskDefinitionInput := copyTd(*output.TaskDefinition, output.Tags)
-	tdCopy := alterSecrets(alterEnvironments(alterImages(asRegisterTaskDefinitionInput, imageMap), envMaps), secretMaps)
+	tdCopy := alterLogConfigurations(alterSecrets(alterEnvironments(alterImages(asRegisterTaskDefinitionInput, imageMap), envMaps), secretMaps), logopts, logsecrets)
 
 	if reflect.DeepEqual(asRegisterTaskDefinitionInput, tdCopy) {
 		return *output.TaskDefinition.TaskDefinitionArn, nil
@@ -186,7 +186,7 @@ func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMap
 	return *arn, nil
 }
 
-func alterService(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, desiredCount *int64, taskdef string) (ecs.Service, ecs.Service, error) {
+func alterService(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, logopts map[string]map[string]map[string]string, logsecrets map[string]map[string]map[string]string, desiredCount *int64, taskdef string) (ecs.Service, ecs.Service, error) {
 	output, err := api.DescribeServices(&ecs.DescribeServicesInput{Cluster: aws.String(cluster), Services: []*string{aws.String(service)}})
 	if err != nil {
 		return ecs.Service{}, ecs.Service{}, err
@@ -196,7 +196,7 @@ func alterService(api ecs.ECS, cluster, service string, imageMap map[string]stri
 		if taskdef != "" {
 			srcTaskDef = &taskdef
 		}
-		newTd, err := copyTaskDef(api, *srcTaskDef, imageMap, envMaps, secretMaps)
+		newTd, err := copyTaskDef(api, *srcTaskDef, imageMap, envMaps, secretMaps, logopts, logsecrets)
 		if err != nil {
 			return *svc, ecs.Service{}, err
 		}
@@ -264,8 +264,8 @@ func validateDeployment(api ecs.ECS, ecsService ecs.Service, bo backoff.BackOff)
 	return errNoPrimaryDeployment
 }
 
-func alterServiceValidateDeployment(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, desiredCount *int64, taskdef string, bo backoff.BackOff) (ecs.Service, error) {
-	oldsvc, newsvc, err := alterService(api, cluster, service, imageMap, envMaps, secretMaps, desiredCount, taskdef)
+func alterServiceValidateDeployment(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, logopts map[string]map[string]map[string]string, logsecrets map[string]map[string]map[string]string, desiredCount *int64, taskdef string, bo backoff.BackOff) (ecs.Service, error) {
+	oldsvc, newsvc, err := alterService(api, cluster, service, imageMap, envMaps, secretMaps, logopts, logsecrets, desiredCount, taskdef)
 	if err != nil {
 		return oldsvc, err
 	}
@@ -283,18 +283,20 @@ func alterServiceValidateDeployment(api ecs.ECS, cluster, service string, imageM
 
 // ECSServiceUpdate encapsulates the attributes of an ECS service update
 type ECSServiceUpdate struct {
-	API          ecs.ECS                      // ECS Api
-	Cluster      string                       // Cluster which the service is deployed to
-	Service      string                       // Name of the service
-	Image        map[string]string            // Map of container names and images
-	Environment  map[string]map[string]string // Map of container names environment variable name and value
-	Secrets      map[string]map[string]string // Map of container names environment variable name and valueFrom
-	DesiredCount *int64                       // If nil the service desired count is not altered
-	BackOff      backoff.BackOff              // BackOff strategy to use when validating the update
-	Taskdef      string                       // If non empty used as base task definition instead of the current task definition
+	API              ecs.ECS                                 // ECS Api
+	Cluster          string                                  // Cluster which the service is deployed to
+	Service          string                                  // Name of the service
+	Image            map[string]string                       // Map of container names and images
+	Environment      map[string]map[string]string            // Map of container names environment variable name and value
+	Secrets          map[string]map[string]string            // Map of container names environment variable name and valueFrom
+	LogDriverOptions map[string]map[string]map[string]string // Map of container names log driver name log driver option and value
+	LogDriverSecrets map[string]map[string]map[string]string // Map of container names log driver name log driver secret and valueFrom
+	DesiredCount     *int64                                  // If nil the service desired count is not altered
+	BackOff          backoff.BackOff                         // BackOff strategy to use when validating the update
+	Taskdef          string                                  // If non empty used as base task definition instead of the current task definition
 }
 
 // Apply the ECS Service Update
 func (e *ECSServiceUpdate) Apply() error {
-	return alterServiceOrValidatedRollBack(e.API, e.Cluster, e.Service, e.Image, e.Environment, e.Secrets, e.DesiredCount, e.Taskdef, e.BackOff)
+	return alterServiceOrValidatedRollBack(e.API, e.Cluster, e.Service, e.Image, e.Environment, e.Secrets, e.LogDriverOptions, e.LogDriverSecrets, e.DesiredCount, e.Taskdef, e.BackOff)
 }
