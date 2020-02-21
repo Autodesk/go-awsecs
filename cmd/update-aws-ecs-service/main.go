@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecs"
-	"github.com/cenkalti/backoff/v3"
+	"github.com/cenkalti/backoff"
 	"log"
 	"os"
 	"strings"
