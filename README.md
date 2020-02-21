@@ -2,6 +2,8 @@
 
 [![travis ci](https://api.travis-ci.org/Autodesk/go-awsecs.svg?branch=master)](https://travis-ci.org/Autodesk/go-awsecs)
 
+[![coverage status](https://coveralls.io/repos/github/Autodesk/go-awsecs/badge.svg?branch=master)](https://coveralls.io/github/Autodesk/go-awsecs?branch=master)
+
 Library and tools for AWS ECS operations.
 
 # contributing
