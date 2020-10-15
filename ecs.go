@@ -1,7 +1,6 @@
 package awsecs
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
@@ -30,15 +29,9 @@ var (
 )
 
 func copyTd(input ecs.TaskDefinition, tags []*ecs.Tag) ecs.RegisterTaskDefinitionInput {
-	obj, err := json.Marshal(input)
-	if err != nil {
-		panic(err)
-	}
+	obj := panicMarshal(input)
 	inputClone := ecs.TaskDefinition{}
-	err = json.Unmarshal(obj, &inputClone)
-	if err != nil {
-		panic(err)
-	}
+	panicUnmarshal(obj, &inputClone)
 	output := ecs.RegisterTaskDefinitionInput{}
 	// TODO: replace with reflection
 	output.ContainerDefinitions = inputClone.ContainerDefinitions
@@ -61,15 +54,9 @@ func copyTd(input ecs.TaskDefinition, tags []*ecs.Tag) ecs.RegisterTaskDefinitio
 }
 
 func alterImages(copy ecs.RegisterTaskDefinitionInput, imageMap map[string]string) ecs.RegisterTaskDefinitionInput {
-	obj, err := json.Marshal(copy)
-	if err != nil {
-		panic(err)
-	}
+	obj := panicMarshal(copy)
 	copyClone := ecs.RegisterTaskDefinitionInput{}
-	err = json.Unmarshal(obj, &copyClone)
-	if err != nil {
-		panic(err)
-	}
+	panicUnmarshal(obj, &copyClone)
 	for name, image := range imageMap {
 		for _, containerDefinition := range copyClone.ContainerDefinitions {
 			if *containerDefinition.Name == name {
@@ -81,15 +68,9 @@ func alterImages(copy ecs.RegisterTaskDefinitionInput, imageMap map[string]strin
 }
 
 func alterEnvironments(copy ecs.RegisterTaskDefinitionInput, envMaps map[string]map[string]string) ecs.RegisterTaskDefinitionInput {
-	obj, err := json.Marshal(copy)
-	if err != nil {
-		panic(err)
-	}
+	obj := panicMarshal(copy)
 	copyClone := ecs.RegisterTaskDefinitionInput{}
-	err = json.Unmarshal(obj, &copyClone)
-	if err != nil {
-		panic(err)
-	}
+	panicUnmarshal(obj, &copyClone)
 	for name, envMap := range envMaps {
 		for i, containerDefinition := range copyClone.ContainerDefinitions {
 			if *containerDefinition.Name == name {
@@ -102,15 +83,9 @@ func alterEnvironments(copy ecs.RegisterTaskDefinitionInput, envMaps map[string]
 }
 
 func alterSecrets(copy ecs.RegisterTaskDefinitionInput, secretMaps map[string]map[string]string) ecs.RegisterTaskDefinitionInput {
-	obj, err := json.Marshal(copy)
-	if err != nil {
-		panic(err)
-	}
+	obj := panicMarshal(copy)
 	copyClone := ecs.RegisterTaskDefinitionInput{}
-	err = json.Unmarshal(obj, &copyClone)
-	if err != nil {
-		panic(err)
-	}
+	panicUnmarshal(obj, &copyClone)
 	for name, secretMap := range secretMaps {
 		for i, containerDefinition := range copyClone.ContainerDefinitions {
 			if *containerDefinition.Name == name {

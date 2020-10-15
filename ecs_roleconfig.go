@@ -1,7 +1,6 @@
 package awsecs
 
 import (
-	"encoding/json"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
 )
@@ -9,15 +8,9 @@ import (
 const TaskRoleKnockoutValue = "None"
 
 func alterTaskRole(copy ecs.RegisterTaskDefinitionInput, taskRoleArn string) ecs.RegisterTaskDefinitionInput {
-	obj, err := json.Marshal(copy)
-	if err != nil {
-		panic(err)
-	}
+	obj := panicMarshal(copy)
 	copyClone := ecs.RegisterTaskDefinitionInput{}
-	err = json.Unmarshal(obj, &copyClone)
-	if err != nil {
-		panic(err)
-	}
+	panicUnmarshal(obj, &copyClone)
 	if taskRoleArn != "" {
 		copyClone.TaskRoleArn = aws.String(taskRoleArn)
 	}

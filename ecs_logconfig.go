@@ -1,7 +1,6 @@
 package awsecs
 
 import (
-	"encoding/json"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
 )
@@ -112,15 +111,9 @@ func alterLogConfigurationLogDriverSecrets(copy ecs.LogConfiguration, overrides 
 }
 
 func alterLogConfigurations(copy ecs.RegisterTaskDefinitionInput, containersOptions map[string]map[string]map[string]string, containersSecrets map[string]map[string]map[string]string) ecs.RegisterTaskDefinitionInput {
-	obj, err := json.Marshal(copy)
-	if err != nil {
-		panic(err)
-	}
+	obj := panicMarshal(copy)
 	copyClone := ecs.RegisterTaskDefinitionInput{}
-	err = json.Unmarshal(obj, &copyClone)
-	if err != nil {
-		panic(err)
-	}
+	panicUnmarshal(obj, &copyClone)
 	for _, containerDefinition := range copyClone.ContainerDefinitions {
 		for containerName, containerOptions := range containersOptions {
 			if containerDefinition.Name != nil && *containerDefinition.Name == containerName {
