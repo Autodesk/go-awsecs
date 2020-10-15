@@ -60,6 +60,7 @@ func main() {
 	region := flag.String("region", "", "region name")
 	taskdef := flag.String("taskdef", "", "base task definition (instead of current)")
 	desiredCount := flag.Int64("desired-count", -1, "desired-count (negative: no change)")
+	taskrole := flag.String("task-role", "", fmt.Sprintf(`task iam role, set to "%s" to clear`, awsecs.TaskRoleKnockoutValue))
 
 	var images mapFlag = map[string]string{}
 	var envs mapMapFlag = map[string]map[string]string{}
@@ -91,6 +92,7 @@ func main() {
 		Secrets:          secrets,
 		LogDriverOptions: logopts,
 		LogDriverSecrets: logsecrets,
+		TaskRole:         *taskrole,
 		DesiredCount:     int64ptr(*desiredCount),
 		Taskdef:          *taskdef,
 		BackOff:          backoff.NewExponentialBackOff(),

@@ -40,11 +40,12 @@ func copyTd(input ecs.TaskDefinition, tags []*ecs.Tag) ecs.RegisterTaskDefinitio
 		panic(err)
 	}
 	output := ecs.RegisterTaskDefinitionInput{}
+	// TODO: replace with reflection
 	output.ContainerDefinitions = inputClone.ContainerDefinitions
 	output.Cpu = inputClone.Cpu
 	output.ExecutionRoleArn = inputClone.ExecutionRoleArn
 	output.Family = inputClone.Family
-	// output.InferenceAccelerators // not supported by the current version of the SDK
+	output.InferenceAccelerators = inputClone.InferenceAccelerators
 	output.IpcMode = inputClone.IpcMode
 	output.Memory = inputClone.Memory
 	output.NetworkMode = inputClone.NetworkMode
@@ -52,9 +53,10 @@ func copyTd(input ecs.TaskDefinition, tags []*ecs.Tag) ecs.RegisterTaskDefinitio
 	output.PlacementConstraints = inputClone.PlacementConstraints
 	output.ProxyConfiguration = inputClone.ProxyConfiguration
 	output.RequiresCompatibilities = inputClone.RequiresCompatibilities
-	output.Tags = tags
 	output.TaskRoleArn = inputClone.TaskRoleArn
 	output.Volumes = inputClone.Volumes
+	// can't be replaced with reflection
+	output.Tags = tags
 	return output
 }
 
@@ -166,14 +168,18 @@ func alterSecret(copy ecs.ContainerDefinition, secretMap map[string]string) ecs.
 	return copy
 }
 
-func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, logopts map[string]map[string]map[string]string, logsecrets map[string]map[string]map[string]string) (string, error) {
+func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, logopts map[string]map[string]map[string]string, logsecrets map[string]map[string]map[string]string, taskRole string) (string, error) {
 	output, err := api.DescribeTaskDefinition(&ecs.DescribeTaskDefinitionInput{TaskDefinition: aws.String(taskdef)})
 	if err != nil {
 		return "", err
 	}
 
 	asRegisterTaskDefinitionInput := copyTd(*output.TaskDefinition, output.Tags)
-	tdCopy := alterLogConfigurations(alterSecrets(alterEnvironments(alterImages(asRegisterTaskDefinitionInput, imageMap), envMaps), secretMaps), logopts, logsecrets)
+	tdCopy := alterImages(asRegisterTaskDefinitionInput, imageMap)
+	tdCopy = alterEnvironments(tdCopy, envMaps)
+	tdCopy = alterSecrets(tdCopy, secretMaps)
+	tdCopy = alterLogConfigurations(tdCopy, logopts, logsecrets)
+	tdCopy = alterTaskRole(tdCopy, taskRole)
 
 	if reflect.DeepEqual(asRegisterTaskDefinitionInput, tdCopy) {
 		return *output.TaskDefinition.TaskDefinitionArn, nil
@@ -186,7 +192,7 @@ func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMap
 	return *arn, nil
 }
 
-func alterService(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, logopts map[string]map[string]map[string]string, logsecrets map[string]map[string]map[string]string, desiredCount *int64, taskdef string) (ecs.Service, ecs.Service, error) {
+func alterService(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, logopts map[string]map[string]map[string]string, logsecrets map[string]map[string]map[string]string, taskRole string, desiredCount *int64, taskdef string) (ecs.Service, ecs.Service, error) {
 	output, err := api.DescribeServices(&ecs.DescribeServicesInput{Cluster: aws.String(cluster), Services: []*string{aws.String(service)}})
 	if err != nil {
 		return ecs.Service{}, ecs.Service{}, err
@@ -196,7 +202,7 @@ func alterService(api ecs.ECS, cluster, service string, imageMap map[string]stri
 		if taskdef != "" {
 			srcTaskDef = &taskdef
 		}
-		newTd, err := copyTaskDef(api, *srcTaskDef, imageMap, envMaps, secretMaps, logopts, logsecrets)
+		newTd, err := copyTaskDef(api, *srcTaskDef, imageMap, envMaps, secretMaps, logopts, logsecrets, taskRole)
 		if err != nil {
 			return *svc, ecs.Service{}, err
 		}
@@ -264,8 +270,8 @@ func validateDeployment(api ecs.ECS, ecsService ecs.Service, bo backoff.BackOff)
 	return errNoPrimaryDeployment
 }
 
-func alterServiceValidateDeployment(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, logopts map[string]map[string]map[string]string, logsecrets map[string]map[string]map[string]string, desiredCount *int64, taskdef string, bo backoff.BackOff) (ecs.Service, error) {
-	oldsvc, newsvc, err := alterService(api, cluster, service, imageMap, envMaps, secretMaps, logopts, logsecrets, desiredCount, taskdef)
+func alterServiceValidateDeployment(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, logopts map[string]map[string]map[string]string, logsecrets map[string]map[string]map[string]string, taskRole string, desiredCount *int64, taskdef string, bo backoff.BackOff) (ecs.Service, error) {
+	oldsvc, newsvc, err := alterService(api, cluster, service, imageMap, envMaps, secretMaps, logopts, logsecrets, taskRole, desiredCount, taskdef)
 	if err != nil {
 		return oldsvc, err
 	}
@@ -291,6 +297,7 @@ type ECSServiceUpdate struct {
 	Secrets          map[string]map[string]string            // Map of container names environment variable name and valueFrom
 	LogDriverOptions map[string]map[string]map[string]string // Map of container names log driver name log driver option and value
 	LogDriverSecrets map[string]map[string]map[string]string // Map of container names log driver name log driver secret and valueFrom
+	TaskRole         string                                  // Task IAM Role if TaskRoleKnockoutValue used, it is cleared
 	DesiredCount     *int64                                  // If nil the service desired count is not altered
 	BackOff          backoff.BackOff                         // BackOff strategy to use when validating the update
 	Taskdef          string                                  // If non empty used as base task definition instead of the current task definition
@@ -298,5 +305,5 @@ type ECSServiceUpdate struct {
 
 // Apply the ECS Service Update
 func (e *ECSServiceUpdate) Apply() error {
-	return alterServiceOrValidatedRollBack(e.API, e.Cluster, e.Service, e.Image, e.Environment, e.Secrets, e.LogDriverOptions, e.LogDriverSecrets, e.DesiredCount, e.Taskdef, e.BackOff)
+	return alterServiceOrValidatedRollBack(e.API, e.Cluster, e.Service, e.Image, e.Environment, e.Secrets, e.LogDriverOptions, e.LogDriverSecrets, e.TaskRole, e.DesiredCount, e.Taskdef, e.BackOff)
 }
