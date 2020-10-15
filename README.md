@@ -37,7 +37,7 @@ Use<sup>1</sup>:
 
 ```
 update-aws-ecs-service --help
-Usage of update-aws-ecs-service:
+Usage of ./update-aws-ecs-service:
   -cluster string
     	cluster name
   -container-envvar value
@@ -58,6 +58,8 @@ Usage of update-aws-ecs-service:
     	region name
   -service string
     	service name
+  -task-role string
+    	task iam role, set to "None" to clear
   -taskdef string
     	base task definition (instead of current)
 ```
