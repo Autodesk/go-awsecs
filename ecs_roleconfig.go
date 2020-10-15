@@ -5,6 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecs"
 )
 
+// TaskRoleKnockoutValue when passed value matches the task role is set to nil
 const TaskRoleKnockoutValue = "None"
 
 func alterTaskRole(copy ecs.RegisterTaskDefinitionInput, taskRoleArn string) ecs.RegisterTaskDefinitionInput {
