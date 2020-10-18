@@ -12,9 +12,13 @@ Make sure your contribution passes the following validations:
 
    `golint ./...`
 
-3. And new code must pass Go Vetting practices:
+3. New code must pass Go Vetting practices:
 
    `go vet ./...`
+
+4. And new code must pass [staticcheck](https://godoc.org/honnef.co/go/tools/cmd/staticcheck) checks:
+
+   `staticcheck ./...`
 
 I would like to keep this library simple, the proposed change must be a common use case.
 

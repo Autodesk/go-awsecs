@@ -3,10 +3,12 @@ package awsecs
 import (
 	"errors"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/cenkalti/backoff"
 	"log"
 	"reflect"
+	"strings"
 )
 
 var (
@@ -167,28 +169,38 @@ func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMap
 	return *arn, nil
 }
 
+// TODO: add coverage
 func alterService(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, logopts map[string]map[string]map[string]string, logsecrets map[string]map[string]map[string]string, taskRole string, desiredCount *int64, taskdef string) (ecs.Service, ecs.Service, error) {
 	output, err := api.DescribeServices(&ecs.DescribeServicesInput{Cluster: aws.String(cluster), Services: []*string{aws.String(service)}})
 	if err != nil {
 		return ecs.Service{}, ecs.Service{}, err
 	}
 	for _, svc := range output.Services {
-		srcTaskDef := svc.TaskDefinition
-		if taskdef != "" {
-			srcTaskDef = &taskdef
-		}
-		newTd, err := copyTaskDef(api, *srcTaskDef, imageMap, envMaps, secretMaps, logopts, logsecrets, taskRole)
+		clusterArn := *svc.ClusterArn
+		parsedClusterArn, err := arn.Parse(clusterArn)
 		if err != nil {
-			return *svc, ecs.Service{}, err
+			return ecs.Service{}, ecs.Service{}, err
 		}
-		if desiredCount == nil {
-			desiredCount = svc.DesiredCount
+		clusterNameFound := strings.TrimPrefix(parsedClusterArn.Resource, "cluster/")
+		serviceNameFound := *svc.ServiceName
+		if clusterNameFound == cluster && serviceNameFound == service {
+			srcTaskDef := svc.TaskDefinition
+			if taskdef != "" {
+				srcTaskDef = &taskdef
+			}
+			newTd, err := copyTaskDef(api, *srcTaskDef, imageMap, envMaps, secretMaps, logopts, logsecrets, taskRole)
+			if err != nil {
+				return *svc, ecs.Service{}, err
+			}
+			if desiredCount == nil {
+				desiredCount = svc.DesiredCount
+			}
+			updated, err := api.UpdateService(&ecs.UpdateServiceInput{Cluster: aws.String(cluster), Service: aws.String(service), TaskDefinition: aws.String(newTd), DesiredCount: desiredCount, ForceNewDeployment: aws.Bool(true)})
+			if err != nil {
+				return *svc, ecs.Service{}, err
+			}
+			return *svc, *updated.Service, nil
 		}
-		updated, err := api.UpdateService(&ecs.UpdateServiceInput{Cluster: aws.String(cluster), Service: aws.String(service), TaskDefinition: aws.String(newTd), DesiredCount: desiredCount, ForceNewDeployment: aws.Bool(true)})
-		if err != nil {
-			return *svc, ecs.Service{}, err
-		}
-		return *svc, *updated.Service, nil
 	}
 	return ecs.Service{}, ecs.Service{}, ErrServiceNotFound
 }

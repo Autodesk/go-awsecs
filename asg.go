@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/autoscaling/autoscalingiface"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -170,16 +171,42 @@ func drainingContainerInstanceIsDrained(ECSAPI ecs.ECS, clusterName, containerIn
 	if err != nil {
 		return err
 	}
+	return findDrainingContainerInstance(output, containerInstanceID)
+}
+
+func findDrainingContainerInstance(output *ecs.DescribeContainerInstancesOutput, containerInstanceID string) error {
 	for _, containerInstance := range output.ContainerInstances {
-		if *containerInstance.Status != "DRAINING" {
-			return backoff.Permanent(errors.New("the instance should be DRAINING but is not"))
+		containerInstanceArn := *containerInstance.ContainerInstanceArn
+		parsedArn, err := arn.Parse(containerInstanceArn)
+		if err != nil {
+			return err
+		}
+		err = checkDrainingContainerInstance(containerInstance, parsedArn, containerInstanceID)
+		if err != nil {
+			return err
+		}
+	}
+	return backoff.Permanent(errors.New("container instance not found"))
+}
+
+func checkDrainingContainerInstance(containerInstance *ecs.ContainerInstance, parsedArn arn.ARN, containerInstanceID string) error {
+	containerInstanceIDFound := strings.TrimPrefix(parsedArn.Resource, "container-instance/")
+	if containerInstanceIDFound == containerInstanceID {
+		if *containerInstance.Status != ecs.ContainerInstanceStatusDraining {
+			errorStringFormat := "the instance should be %s but is not"
+			errorString := fmt.Sprintf(errorStringFormat, ecs.ContainerInstanceStatusDraining)
+			permanentError := errors.New(errorString)
+			return backoff.Permanent(permanentError)
 		}
 		if *containerInstance.RunningTasksCount != 0 {
-			return errors.New("container instance still DRAINING")
+			errorStringFormat := "container instance still %s"
+			errorString := fmt.Sprintf(errorStringFormat, ecs.ContainerInstanceStatusDraining)
+			retryableError := errors.New(errorString)
+			return retryableError
 		}
 		return nil
 	}
-	return backoff.Permanent(errors.New("container instance not found"))
+	return nil
 }
 
 func drainAll(ASAPI autoscaling.AutoScaling, ECSAPI ecs.ECS, EC2API ec2.EC2, instances []ecsEC2Instance, asgName, clusterName string) error {
