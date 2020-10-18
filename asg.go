@@ -175,18 +175,16 @@ func drainingContainerInstanceIsDrained(ECSAPI ecs.ECS, clusterName, containerIn
 }
 
 func findDrainingContainerInstance(output *ecs.DescribeContainerInstancesOutput, containerInstanceID string) error {
-	for _, containerInstance := range output.ContainerInstances {
-		containerInstanceArn := *containerInstance.ContainerInstanceArn
-		parsedArn, err := arn.Parse(containerInstanceArn)
-		if err != nil {
-			return err
-		}
-		err = checkDrainingContainerInstance(containerInstance, parsedArn, containerInstanceID)
-		if err != nil {
-			return err
-		}
+	if len(output.ContainerInstances) == 0 {
+		return ErrContainerInstanceNotFound
 	}
-	return backoff.Permanent(errors.New("container instance not found"))
+	containerInstance := output.ContainerInstances[0]
+	containerInstanceArn := *containerInstance.ContainerInstanceArn
+	parsedArn, err := arn.Parse(containerInstanceArn)
+	if err != nil {
+		return err
+	}
+	return checkDrainingContainerInstance(containerInstance, parsedArn, containerInstanceID)
 }
 
 func checkDrainingContainerInstance(containerInstance *ecs.ContainerInstance, parsedArn arn.ARN, containerInstanceID string) error {
@@ -206,7 +204,7 @@ func checkDrainingContainerInstance(containerInstance *ecs.ContainerInstance, pa
 		}
 		return nil
 	}
-	return nil
+	return ErrContainerInstanceNotFound
 }
 
 func drainAll(ASAPI autoscaling.AutoScaling, ECSAPI ecs.ECS, EC2API ec2.EC2, instances []ecsEC2Instance, asgName, clusterName string) error {

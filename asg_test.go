@@ -112,7 +112,7 @@ func TestCheckDrainingContainerInstance(t *testing.T) {
 		},
 		{
 			name:    "Not matching container instance ID",
-			wantErr: false,
+			wantErr: true,
 			args: args{
 				containerInstance: &ecs.ContainerInstance{},
 				parsedArn: arn.ARN{
