@@ -19,8 +19,7 @@ func TestMapMapMapFlag_Set(t *testing.T) {
 	if err := actualStruct.Set("container2=fluentd=option1=value1"); err != nil {
 		t.Fatal(err)
 	}
-	var expectedStruct mapMapMapFlag
-	expectedStruct = map[string]map[string]map[string]string{
+	var expectedStruct mapMapMapFlag = map[string]map[string]map[string]string{
 		"container1": {
 			"awslogs": {
 				"region":   "us-west-2",

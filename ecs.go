@@ -3,10 +3,12 @@ package awsecs
 import (
 	"errors"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/cenkalti/backoff"
 	"log"
 	"reflect"
+	"strings"
 )
 
 var (
@@ -22,6 +24,8 @@ var (
 	ErrServiceNotFound = errors.New("the service does not exist")
 	// ErrServiceDeletedAfterUpdate service was updated and then deleted elsewhere
 	ErrServiceDeletedAfterUpdate = backoff.Permanent(errors.New("the service was deleted after the update"))
+	// ErrContainerInstanceNotFound the container instance was removed from the cluster elsewhere
+	ErrContainerInstanceNotFound = backoff.Permanent(errors.New("container instance not found"))
 )
 
 var (
@@ -163,8 +167,8 @@ func copyTaskDef(api ecs.ECS, taskdef string, imageMap map[string]string, envMap
 	if err != nil {
 		return "", err
 	}
-	arn := tdNew.TaskDefinition.TaskDefinitionArn
-	return *arn, nil
+	taskDefinitionArn := tdNew.TaskDefinition.TaskDefinitionArn
+	return *taskDefinitionArn, nil
 }
 
 func alterService(api ecs.ECS, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, logopts map[string]map[string]map[string]string, logsecrets map[string]map[string]map[string]string, taskRole string, desiredCount *int64, taskdef string) (ecs.Service, ecs.Service, error) {
@@ -172,19 +176,51 @@ func alterService(api ecs.ECS, cluster, service string, imageMap map[string]stri
 	if err != nil {
 		return ecs.Service{}, ecs.Service{}, err
 	}
-	for _, svc := range output.Services {
-		srcTaskDef := svc.TaskDefinition
-		if taskdef != "" {
-			srcTaskDef = &taskdef
+	copyTaskDefinitionAction := func(sourceTaskDefinition string) (string, error) {
+		return copyTaskDef(api, sourceTaskDefinition, imageMap, envMaps, secretMaps, logopts, logsecrets, taskRole)
+	}
+	updateAction := func(newTaskDefinition *string, desiredCount *int64) (*ecs.UpdateServiceOutput, error) {
+		updateServiceInput := &ecs.UpdateServiceInput{
+			Cluster:            aws.String(cluster),
+			Service:            aws.String(service),
+			TaskDefinition:     newTaskDefinition,
+			DesiredCount:       desiredCount,
+			ForceNewDeployment: aws.Bool(true),
 		}
-		newTd, err := copyTaskDef(api, *srcTaskDef, imageMap, envMaps, secretMaps, logopts, logsecrets, taskRole)
+		return api.UpdateService(updateServiceInput)
+	}
+	return findAndUpdateService(output, cluster, service, taskdef, desiredCount, copyTaskDefinitionAction, updateAction)
+}
+
+func findAndUpdateService(output *ecs.DescribeServicesOutput, cluster, service, taskDefinition string, desiredCount *int64, copyTdAction func(string) (string, error), updateSvcAction func(*string, *int64) (*ecs.UpdateServiceOutput, error)) (ecs.Service, ecs.Service, error) {
+	if len(output.Services) == 0 {
+		return ecs.Service{}, ecs.Service{}, ErrServiceNotFound
+	}
+	svc := output.Services[0]
+	clusterArn := *svc.ClusterArn
+	parsedClusterArn, err := arn.Parse(clusterArn)
+	if err != nil {
+		return ecs.Service{}, ecs.Service{}, err
+	}
+	return updateService(parsedClusterArn, svc, cluster, service, taskDefinition, desiredCount, copyTdAction, updateSvcAction)
+}
+
+func updateService(parsedClusterArn arn.ARN, svc *ecs.Service, cluster, service, td string, desiredCount *int64, copyTdAction func(string) (string, error), updateSvcAction func(*string, *int64) (*ecs.UpdateServiceOutput, error)) (ecs.Service, ecs.Service, error) {
+	clusterNameFound := strings.TrimPrefix(parsedClusterArn.Resource, "cluster/")
+	serviceNameFound := *svc.ServiceName
+	if clusterNameFound == cluster && serviceNameFound == service {
+		srcTaskDef := svc.TaskDefinition
+		if td != "" {
+			srcTaskDef = &td
+		}
+		newTd, err := copyTdAction(*srcTaskDef)
 		if err != nil {
 			return *svc, ecs.Service{}, err
 		}
 		if desiredCount == nil {
 			desiredCount = svc.DesiredCount
 		}
-		updated, err := api.UpdateService(&ecs.UpdateServiceInput{Cluster: aws.String(cluster), Service: aws.String(service), TaskDefinition: aws.String(newTd), DesiredCount: desiredCount, ForceNewDeployment: aws.Bool(true)})
+		updated, err := updateSvcAction(aws.String(newTd), desiredCount)
 		if err != nil {
 			return *svc, ecs.Service{}, err
 		}
