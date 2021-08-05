@@ -307,7 +307,7 @@ func validateDraining(ecsapi ecsiface.ECSAPI, elbv2api elbv2iface.ELBV2API, ecsS
 		}
 
 		allInitialTargetsGone := true
-		for targetId, _ := range initialTargetIdState {
+		for targetId := range initialTargetIdState {
 			if _, found := newTargetIdState[targetId]; found {
 				allInitialTargetsGone = false
 			}
@@ -426,10 +426,8 @@ func (e *ECSServiceUpdate) Apply() error {
 		switch *e.WaitUntil {
 		case WaitUntilDrainingStarted:
 			useValidateDeploymentFunc = validateDraining
-			break
 		case WaitUntilPrimaryRolled:
 			useValidateDeploymentFunc = validateDeployment
-			break
 		default:
 			return ErrInvalidWaitUntil
 		}
