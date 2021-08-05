@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecs"
+	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/cenkalti/backoff"
 	"log"
 	"os"
@@ -61,6 +62,7 @@ func main() {
 	taskdef := flag.String("taskdef", "", "base task definition (instead of current)")
 	desiredCount := flag.Int64("desired-count", -1, "desired-count (negative: no change)")
 	taskrole := flag.String("task-role", "", fmt.Sprintf(`task iam role, set to "%s" to clear`, awsecs.TaskRoleKnockoutValue))
+	waituntil := flag.String("wait-until", awsecs.WaitUntilPrimaryRolled, fmt.Sprintf("valid options are: %s", strings.Join(awsecs.WaitUntilOptionList, ", ")))
 
 	var images mapFlag = map[string]string{}
 	var envs mapMapFlag = map[string]map[string]string{}
@@ -84,7 +86,8 @@ func main() {
 	}
 
 	esu := awsecs.ECSServiceUpdate{
-		API:              *ecs.New(sess),
+		EcsApi:           ecs.New(sess),
+		ElbApi:           elbv2.New(sess),
 		Cluster:          *cluster,
 		Service:          *service,
 		Image:            images,
@@ -95,6 +98,7 @@ func main() {
 		TaskRole:         *taskrole,
 		DesiredCount:     int64ptr(*desiredCount),
 		Taskdef:          *taskdef,
+		WaitUntil:        waituntil,
 		BackOff:          backoff.NewExponentialBackOff(),
 	}
 
