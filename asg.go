@@ -15,12 +15,12 @@ import (
 	"sync"
 )
 
-func listASGInstaces(ASAPI autoscalingiface.AutoScalingAPI, asgName string) ([]*autoscaling.Instance, *string, error) {
+func listASGInstances(ASAPI autoscalingiface.AutoScalingAPI, asgName string) ([]*autoscaling.Instance, *string, error) {
 	output, err := ASAPI.DescribeAutoScalingGroups(&autoscaling.DescribeAutoScalingGroupsInput{
 		AutoScalingGroupNames: []*string{aws.String(asgName)},
 	})
 	if err != nil {
-		return []*autoscaling.Instance{}, nil, err
+		return []*autoscaling.Instance{}, nil, fmt.Errorf("on list ASG instances while describe ASG: %w", err)
 	}
 
 	for _, autoScalingGroup := range output.AutoScalingGroups {
@@ -85,12 +85,12 @@ func instancesToContainerInstances(ECSAPI ecs.ECS, instances []autoscaling.Insta
 			return true
 		})
 	if err != nil {
-		return []ecsEC2Instance{}, err
+		return []ecsEC2Instance{}, fmt.Errorf("on instances to container instances map while paginating container instances: %w", err)
 	}
 	for _, input := range describeContainerInstancesInputs {
 		output, err := ECSAPI.DescribeContainerInstances(input)
 		if err != nil {
-			return []ecsEC2Instance{}, err
+			return []ecsEC2Instance{}, fmt.Errorf("on instances to container instances map while describe container instances: %w", err)
 		}
 		for _, instance := range instances {
 			for _, containerInstance := range output.ContainerInstances {
@@ -169,7 +169,7 @@ func drainingContainerInstanceIsDrained(ECSAPI ecs.ECS, clusterName, containerIn
 		ContainerInstances: []*string{aws.String(containerInstanceID)},
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("on draining container instance while describe container instance: %w", err)
 	}
 	return findDrainingContainerInstance(output, containerInstanceID)
 }
@@ -239,7 +239,7 @@ func drainAll(ASAPI autoscaling.AutoScaling, ECSAPI ecs.ECS, EC2API ec2.EC2, ins
 }
 
 func enforceLaunchConfig(ECSAPI ecs.ECS, ASAPI autoscaling.AutoScaling, EC2API ec2.EC2, asgName, clusterName string, bo backoff.BackOff) error {
-	asgInstances, expectedLaunchConfig, err := listASGInstaces(&ASAPI, asgName)
+	asgInstances, expectedLaunchConfig, err := listASGInstances(&ASAPI, asgName)
 	if err != nil {
 		return err
 	}

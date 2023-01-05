@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/ecs"
@@ -43,6 +44,14 @@ var (
 	errNoPrimaryDeployment = backoff.Permanent(errors.New("no PRIMARY deployment"))
 )
 
+func ifEmptyThenNil(tags []*ecs.Tag) []*ecs.Tag {
+	l := len(tags)
+	if l == 0 {
+		return nil
+	}
+	return tags
+}
+
 func copyTd(input ecs.TaskDefinition, tags []*ecs.Tag) ecs.RegisterTaskDefinitionInput {
 	obj := panicMarshal(input)
 	inputClone := ecs.TaskDefinition{}
@@ -64,7 +73,7 @@ func copyTd(input ecs.TaskDefinition, tags []*ecs.Tag) ecs.RegisterTaskDefinitio
 	output.TaskRoleArn = inputClone.TaskRoleArn
 	output.Volumes = inputClone.Volumes
 	// can't be replaced with reflection
-	output.Tags = tags
+	output.Tags = ifEmptyThenNil(tags)
 	return output
 }
 
@@ -161,7 +170,7 @@ func alterSecret(copy ecs.ContainerDefinition, secretMap map[string]string) ecs.
 func copyTaskDef(api ecsiface.ECSAPI, taskdef string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, logopts map[string]map[string]map[string]string, logsecrets map[string]map[string]map[string]string, taskRole string) (string, error) {
 	output, err := api.DescribeTaskDefinition(&ecs.DescribeTaskDefinitionInput{TaskDefinition: aws.String(taskdef)})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("on copy task definition while describe existing task definition: %w", err)
 	}
 
 	asRegisterTaskDefinitionInput := copyTd(*output.TaskDefinition, output.Tags)
@@ -176,7 +185,7 @@ func copyTaskDef(api ecsiface.ECSAPI, taskdef string, imageMap map[string]string
 	}
 	tdNew, err := api.RegisterTaskDefinition(&tdCopy)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("on copy task definition while register new task definition: %w", err)
 	}
 	taskDefinitionArn := tdNew.TaskDefinition.TaskDefinitionArn
 	return *taskDefinitionArn, nil
@@ -185,7 +194,7 @@ func copyTaskDef(api ecsiface.ECSAPI, taskdef string, imageMap map[string]string
 func alterService(api ecsiface.ECSAPI, cluster, service string, imageMap map[string]string, envMaps map[string]map[string]string, secretMaps map[string]map[string]string, logopts map[string]map[string]map[string]string, logsecrets map[string]map[string]map[string]string, taskRole string, desiredCount *int64, taskdef string) (ecs.Service, ecs.Service, error) {
 	output, err := api.DescribeServices(&ecs.DescribeServicesInput{Cluster: aws.String(cluster), Services: []*string{aws.String(service)}})
 	if err != nil {
-		return ecs.Service{}, ecs.Service{}, err
+		return ecs.Service{}, ecs.Service{}, fmt.Errorf("on alter service while describe service: %w", err)
 	}
 	copyTaskDefinitionAction := func(sourceTaskDefinition string) (string, error) {
 		return copyTaskDef(api, sourceTaskDefinition, imageMap, envMaps, secretMaps, logopts, logsecrets, taskRole)
@@ -267,7 +276,7 @@ func validateDraining(ecsapi ecsiface.ECSAPI, elbv2api elbv2iface.ELBV2API, ecsS
 	describeEcsOutput, err := ecsapi.DescribeServices(&ecs.DescribeServicesInput{Cluster: ecsService.ClusterArn, Services: []*string{ecsService.ServiceName}})
 
 	if err != nil {
-		return backoff.Permanent(err)
+		return backoff.Permanent(fmt.Errorf("on validate draining while describe service: %w", err))
 	}
 	if len(describeEcsOutput.Services) == 0 {
 		return backoff.Permanent(ErrServiceNotFound)
@@ -334,7 +343,7 @@ func validateDeployment(api ecsiface.ECSAPI, _ elbv2iface.ELBV2API, ecsService e
 			operation := func() error {
 				output, err = api.DescribeServices(&ecs.DescribeServicesInput{Cluster: ecsService.ClusterArn, Services: []*string{ecsService.ServiceName}})
 				if err != nil {
-					return err
+					return fmt.Errorf("on validate deployment while describe service: %w", err)
 				}
 				for _, svc := range output.Services {
 					for _, deployment := range svc.Deployments {
