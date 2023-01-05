@@ -158,3 +158,47 @@ func TestUpdateService(t *testing.T) {
 		})
 	}
 }
+
+func Test_ifEmptyThenNil(t *testing.T) {
+	type args struct {
+		tags []*ecs.Tag
+	}
+	tag := ecs.Tag{
+		Key:   aws.String("key"),
+		Value: aws.String("value"),
+	}
+	tests := []struct {
+		name string
+		args args
+		want []*ecs.Tag
+	}{
+		{
+			name: "if empty then nil",
+			args: args{
+				tags: []*ecs.Tag{},
+			},
+			want: nil,
+		},
+		{
+			name: "if nil then nil",
+			args: args{
+				tags: nil,
+			},
+			want: nil,
+		},
+		{
+			name: "if not empty then not nil",
+			args: args{
+				tags: []*ecs.Tag{&tag},
+			},
+			want: []*ecs.Tag{&tag},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ifEmptyThenNil(tt.args.tags); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ifEmptyThenNil() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -28,7 +28,7 @@ func (m *mockAutoScalingClient) DescribeAutoScalingGroups(input *autoscaling.Des
 }
 
 func TestListASGInstaces(t *testing.T) {
-	instances, name, err := listASGInstaces(&mockAutoScalingClient{}, "")
+	instances, name, err := listASGInstances(&mockAutoScalingClient{}, "")
 	if len(instances) != 0 {
 		t.Errorf("unexpected")
 	}

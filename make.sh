@@ -20,7 +20,7 @@ do
     windows_ext=.exe
     for goos in linux windows darwin; do
       # shellcheck disable=SC2043
-      for goarch in amd64; do
+      for goarch in amd64 arm64; do
         ext="${goos}_ext"
         out_no_ext="${dir}-${goos}-${goarch}"
         out="${dir}${!ext:-}"
